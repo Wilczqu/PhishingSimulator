@@ -3,9 +3,19 @@ const express = require('express');
 const { Sequelize, DataTypes } = require('sequelize');
 const bodyParser = require('body-parser');
 const cors = require('cors');
+require('dotenv').config();
+const { Pool } = require('pg');
 
 const app = express();
 app.use(bodyParser.json());
+
+const pool = new Pool({
+  host: process.env.DB_HOST,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_NAME,
+  port: 5432,
+});
 
 // Configure CORS to only allow POST from http://localhost:3000
 app.use(
@@ -17,11 +27,16 @@ app.use(
 );
 
 // Initialize Sequelize
-const sequelize = new Sequelize('phishingdb', 'postgres', 'postgres', {
-  host: 'localhost',
-  dialect: 'postgres',
-  port: 5432,
-});
+const sequelize = new Sequelize(
+  process.env.DB_NAME,
+  process.env.DB_USER,
+  process.env.DB_PASSWORD,
+  {
+    host: process.env.DB_HOST, // will resolve to "db" when using Docker
+    dialect: 'postgres',
+    port: 5432,
+  }
+);
 
 // Define the User model
 const User = sequelize.define('User', {
@@ -94,3 +109,35 @@ const PORT = 5000; // or any port you prefer
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
+
+async function waitForDatabase(retries = 10, delay = 5000) {
+  for (let i = 0; i < retries; i++) {
+    try {
+      await sequelize.authenticate();
+      console.log('Database connection established successfully.');
+      return;
+    } catch (err) {
+      console.log(`Database not ready, retrying in ${delay / 1000} seconds...`);
+      await new Promise((resolve) => setTimeout(resolve, delay));
+    }
+  }
+  throw new Error('Unable to connect to the database after multiple attempts.');
+}
+
+(async () => {
+  try {
+    await waitForDatabase();
+    // Sync models after the DB is confirmed ready
+    await sequelize.sync();
+    console.log('Database & tables created!');
+    
+    // Start the server after successful DB connection
+    const PORT = 5000;
+    app.listen(PORT, () => {
+      console.log(`Server running on port ${PORT}`);
+    });
+  } catch (error) {
+    console.error('Error starting the server:', error);
+    process.exit(1);
+  }
+})();
