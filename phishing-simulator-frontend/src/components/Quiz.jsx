@@ -13,8 +13,27 @@ const Quiz = ({ quiz }) => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    // Submit answers via an API call or handle locally
-    navigate(`/quiz_results/${quiz.id}`, { state: { answers } });
+
+    // Calculate score and prepare results array
+    let score = 0; // Initialize score
+    const results = quiz.questions.map(([questionText, answerOptions, correctAnswer, explanation, type], index) => {
+      const userAnswer = answers[index] || ''; // Get the user's answer for this question
+      if (userAnswer === correctAnswer) score += 1; // Increment score for correct answers
+
+      return {
+        questionText,
+        answerOptions,
+        correctAnswer,
+        userAnswer,
+        explanation,
+        type, // Add type for categorization
+      };
+    });
+
+    // Navigate to results page with calculated score and results
+    navigate(`/quiz_results/${quiz.id}`, {
+      state: { score, total: quiz.questions.length, results }, // Pass score, total, and results
+    });
   };
 
   return (
