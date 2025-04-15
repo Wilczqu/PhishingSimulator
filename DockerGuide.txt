@@ -1,0 +1,38 @@
+Step one install Docker Dekstop + docker compose ( should come as default but just see if you will be asked if yes then install)
+
+1. Clone Repository 
+git clone < name of our repository > 
+then cd into that folder 
+
+2. Build & start the app 
+Docker-compose up -d --build
+
+This will generate containers for 
+
+- PosteSQL DB working on port 5432 
+- Backend container on port 5000
+- Frontend service on port 3000
+
+if the containers have not started type :
+
+- docker-compose up -d
+
+3. How to access the app 
+
+You should be able to access: 
+
+- Frontend on http://localhost:5000
+- Backend Api : http://localhost:3000 
+
+to stop services type docker-compose down
+
+To check the logs 
+
+docker-compose logs ( for all the logs ) 
+
+docker-compose logs "name of the container " to generate logs for specific container
+
+
+4. Accessing DB 
+
+- docker-compose exec db psql -U postgres phishingdb
