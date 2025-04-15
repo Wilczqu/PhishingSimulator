@@ -1,0 +1,27 @@
+1. Clone the fork for GIT 
+
+go to repository website https://github.com/Wilczqu/PhishingSimulator.git
+
+write "git clone https://github.com/Wilczqu/PhishingSimulator.git "
+
+in your terminal cd into the project folder 
+
+2. Set up Remotes 
+
+- git remote add upstream https://github.com/Wilczqu/PhishingSimulator.git
+# it should show you 'origin' 'yourfork' 'upstream' main repo 
+- git remote -v 
+
+3. Syncing your repository 
+
+git fetch upstream 
+git checkout main
+git merge upstream/main 
+
+git checkout -b feature/feature_name this will be when you are updating the code
+
+4. to make changes 
+
+git add . 
+git commit -m "your comment "
+git push origin feature/feature-name
