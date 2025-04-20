@@ -1,12 +1,12 @@
 // src/components/Logout.jsx
-import React, { useEffect } from 'react';
+import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import '../App.css';
 
 const Logout = () => {
   const navigate = useNavigate();
 
-  useEffect(() => {
+  useEffect (() => {
     // 1. Clear any session data, tokens, or cookies here if needed
     //    e.g., localStorage.removeItem('token');
 

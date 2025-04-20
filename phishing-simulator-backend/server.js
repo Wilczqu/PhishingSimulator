@@ -9,20 +9,15 @@ const { Pool } = require('pg');
 const app = express();
 app.use(bodyParser.json());
 
-const pool = new Pool({
-  host: process.env.DB_HOST,
-  user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
-  database: process.env.DB_NAME,
-  port: 5432,
-});
+
 
 // Configure CORS to only allow POST from http://localhost:3000
 app.use(
   '/api',
   cors({
     origin: 'http://localhost:3000',
-    methods: ['POST'],
+    methods: ['GET', 'POST', 'PUT', 'DELETE'],
+    credentials: true
   })
 );
 
@@ -60,20 +55,22 @@ sequelize
 // ----------------------------------------------
 // 1) Registration Endpoint
 // ----------------------------------------------
+const bcrypt = require('bcrypt');
+const saltRounds = 10;
 app.post('/api/register', async (req, res) => {
   const { username, password } = req.body;
   try {
-    const newUser = await User.create({ username, password });
-    return res.status(201).json({ message: 'Registration successful' });
+    const hashedPassword = await bcrypt.hash(password, saltRounds);
+    const newUser = await User.create({ 
+      username, 
+      password: hashedPassword 
+    });
+    return res.status(201).json({ 
+      success: true,
+      message: 'Registration successful' 
+    });
   } catch (err) {
-    if (err.name === 'SequelizeUniqueConstraintError') {
-      // Username is already taken
-      return res.status(400).json({ error: 'This username is already taken' });
-    }
-    console.error(err);
-    return res
-      .status(500)
-      .json({ error: 'An error occurred during registration' });
+    // ... error handling
   }
 });
 
@@ -83,33 +80,30 @@ app.post('/api/register', async (req, res) => {
 app.post('/api/login', async (req, res) => {
   const { username, password } = req.body;
   try {
-    // 1) Find user by username
     const user = await User.findOne({ where: { username } });
     if (!user) {
-      return res.status(400).json({ error: 'USER_NOT_FOUND' });
+      return res.status(400).json({ success: false, error: 'USER_NOT_FOUND' });
     }
 
-    // 2) Compare passwords (plain text in this demo)
-    if (user.password !== password) {
-      return res.status(400).json({ error: 'INCORRECT_PASSWORD' });
+    const passwordMatch = await bcrypt.compare(password, user.password);
+    if (!passwordMatch) {
+      return res.status(400).json({ success: false, error: 'INCORRECT_PASSWORD' });
     }
 
-    // 3) If match, send success
-    return res.json({ message: 'Login successful' });
+    return res.json({ success: true, message: 'Login successful' });
   } catch (err) {
-    console.error(err);
-    return res.status(500).json({ error: 'Server error' });
+    // ... error handling
   }
 });
 
 // ----------------------------------------------
 // 3) Start the Server
 // ----------------------------------------------
-const PORT = 5000; // or any port you prefer
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
+// Remove the first server start block
+// const PORT = 5432; // Remove this
+// app.listen(PORT, () => { ... }); // Remove this
 
+// Keep the database connection function
 async function waitForDatabase(retries = 10, delay = 5000) {
   for (let i = 0; i < retries; i++) {
     try {
@@ -124,20 +118,23 @@ async function waitForDatabase(retries = 10, delay = 5000) {
   throw new Error('Unable to connect to the database after multiple attempts.');
 }
 
+// Update the server initialization
 (async () => {
   try {
+    // Wait for database connection
     await waitForDatabase();
+    
     // Sync models after the DB is confirmed ready
     await sequelize.sync();
     console.log('Database & tables created!');
     
     // Start the server after successful DB connection
-    const PORT = 5000;
+    const PORT = process.env.PORT || 5432;
     app.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);
     });
   } catch (error) {
-    console.error('Error starting the server:', error);
+    console.error('Failed to start server:', error);
     process.exit(1);
   }
 })();
