@@ -9,7 +9,10 @@ const { Pool } = require('pg');
 const app = express();
 app.use(bodyParser.json());
 
-
+// Add health check endpoint
+app.get('/health', (req, res) => {
+  res.sendStatus(200);
+});
 
 // Configure CORS to only allow POST from http://localhost:3000
 app.use(
@@ -70,7 +73,17 @@ app.post('/api/register', async (req, res) => {
       message: 'Registration successful' 
     });
   } catch (err) {
-    // ... error handling
+    console.error('Registration error:', err);
+    if (err.name === 'SequelizeUniqueConstraintError') {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Username already exists' 
+      });
+    }
+    return res.status(500).json({ 
+      success: false, 
+      error: 'Server error during registration' 
+    });
   }
 });
 
@@ -129,7 +142,7 @@ async function waitForDatabase(retries = 10, delay = 5000) {
     console.log('Database & tables created!');
     
     // Start the server after successful DB connection
-    const PORT = process.env.PORT || 5432;
+    const PORT = process.env.PORT || 5050;  // Changed from 5432
     app.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);
     });
