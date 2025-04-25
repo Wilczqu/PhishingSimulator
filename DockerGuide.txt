@@ -1,38 +1,83 @@
-Step one install Docker Dekstop + docker compose ( should come as default but just see if you will be asked if yes then install)
+# Phishing Simulator - Setup Instructions
 
-1. Clone Repository 
-git clone < name of our repository > 
-then cd into that folder 
+## Prerequisites
+- Docker Desktop installed and running
+- Git installed
+- Node.js installed (version 23 or higher)
+- Visual Studio Code (recommended)
 
-2. Build & start the app 
-Docker-compose up -d --build
+## Clone and Setup
 
-This will generate containers for 
+1. Clone the repository:
+```powershell
+git clone https://github.com/Wilczqu/PhishingSimulator.git
+cd PhishingSimulator
+```
 
-- PosteSQL DB working on port 5432 
-- Backend container on port 5000
-- Frontend service on port 3000
+2. Create `.env` file in the project root:
+```plaintext
+DB_USER=postgres
+DB_PASSWORD=postgres
+DB_NAME=phishingdb
+DB_HOST=db
+PORT=5050
+```
 
-if the containers have not started type :
+3. Create backend `.env` in the backend folder:
+```plaintext
+DB_USER=postgres
+DB_PASSWORD=postgres
+DB_NAME=phishingdb
+DB_HOST=db
+PORT=5050
+```
 
-- docker-compose up -d
+## Start the Application
 
-3. How to access the app 
+1. Build and start containers:
+```powershell
+docker-compose down -v  # Clean up any existing containers
+docker system prune -f  # Remove unused Docker resources
+docker-compose up --build
+```
 
-You should be able to access: 
+2. Wait for the services to start:
+   - Database will initialize on port 5432
+   - Backend API will start on port 5050
+   - Frontend will be available on port 3000
 
-- Frontend on http://localhost:5000
-- Backend Api : http://localhost:3000 
+3. Access the application:
+   - Frontend: http://localhost:3000
+   - Backend API: http://localhost:5050
+   - Database: localhost:5432
 
-to stop services type docker-compose down
+## Troubleshooting
 
-To check the logs 
+If you encounter any issues:
 
-docker-compose logs ( for all the logs ) 
+1. Check Docker logs:
+```powershell
+docker-compose logs
+```
 
-docker-compose logs "name of the container " to generate logs for specific container
+2. Rebuild from scratch:
+```powershell
+docker-compose down -v
+docker system prune -f
+Remove-Item -Recurse -Force .\phishing-simulator-backend\node_modules -ErrorAction SilentlyContinue
+docker-compose up --build
+```
 
+3. Verify ports are available:
+```powershell
+netstat -ano | findstr "5432"
+netstat -ano | findstr "5050"
+netstat -ano | findstr "3000"
+```
 
-4. Accessing DB 
+4. Common issues:
+   - If bcrypt fails to build, try removing node_modules and rebuilding
+   - If ports are in use, stop conflicting services or change ports in docker-compose.yml
+   - If database fails to initialize, check PostgreSQL logs using `docker-compose logs db`
 
-- docker-compose exec db psql -U postgres phishingdb
+The application should now be running and accessible through your browser.
