@@ -9,7 +9,7 @@ const Result = ({ score, total, resultText }) => {
       <h2>Quiz Results</h2>
       <p>You answered {score} out of {total} questions correctly.</p>
       <h3>You {resultText} the quiz!</h3>
-      <Link to="/dashboard">Go back to Dashboard</Link>
+      <Link to="/home">Go back to Home</Link>
     </div>
   );
 };

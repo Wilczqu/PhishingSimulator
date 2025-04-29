@@ -1,6 +1,6 @@
-import axios from 'axios';
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
 import '../App.css';
 
 const Register = () => {
@@ -35,7 +35,8 @@ const Register = () => {
     }
 
     try {
-      const response = await axios.post('http://localhost:5432/api/register', {
+      // Using relative URL path instead of hardcoded localhost address
+      const response = await axios.post('/api/register', {
         username,
         password
       });
@@ -60,27 +61,31 @@ const Register = () => {
   return (
     <div className="container">
       <h2>Register</h2>
-      {errorMsg && <p style={{ color: 'red' }}>{errorMsg}</p>}
-      {successMsg && <p style={{ color: 'green' }}>{successMsg}</p>}
+      {errorMsg && <p className="error-message">{errorMsg}</p>}
+      {successMsg && <p className="success-message">{successMsg}</p>}
       <form onSubmit={handleSubmit}>
-        <input
-          type="text"
-          placeholder="Username"
-          required
-          minLength="3"
-          value={username}
-          onChange={(e) => setUsername(e.target.value)}
-          disabled={isLoading}
-        />
-        <input
-          type="password"
-          placeholder="Password"
-          required
-          minLength="6"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          disabled={isLoading}
-        />
+        <div className="form-group">
+          <input
+            type="text"
+            placeholder="Username"
+            required
+            minLength="3"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            disabled={isLoading}
+          />
+        </div>
+        <div className="form-group">
+          <input
+            type="password"
+            placeholder="Password"
+            required
+            minLength="6"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            disabled={isLoading}
+          />
+        </div>
         <button type="submit" disabled={isLoading}>
           {isLoading ? 'Registering...' : 'Register'}
         </button>

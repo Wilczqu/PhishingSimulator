@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>PayPal Security Alert</title>
+</head>
+<body style="font-family: Arial, sans-serif; margin: 0; padding: 0; color: #333;">
+  <div style="max-width: 600px; margin: 0 auto; border: 1px solid #ddd;">
+    <div style="padding: 15px; background-color: #0070ba; text-align: center;">
+      <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/b/b5/PayPal.svg/1200px-PayPal.svg.png" alt="PayPal" style="height: 40px;">
+    </div>
+    <div style="padding: 20px; line-height: 1.5;">
+      <h2>Security Alert: Unusual Account Activity</h2>
+      <div style="background-color: #f5f7fa; border-left: 4px solid #0070ba; padding: 15px; margin: 15px 0;">
+        <p>Dear {{user_name}},</p>
+        <p>We've noticed some unusual activity in your PayPal account. For your security, we've temporarily limited access to sensitive account features.</p>
+      </div>
+      <p>To restore full access to your account, please verify your identity by clicking the button below:</p>
+      <p><a href="{{phishing_url}}" style="display: inline-block; background-color: #0070ba; color: white; padding: 12px 20px; text-decoration: none; border-radius: 3px; margin: 15px 0;">Verify My Account</a></p>
+      <p>If you did not make these changes or if you believe an unauthorized person has accessed your account, please click the link above immediately.</p>
+      <p>Thank you for your prompt attention to this matter.</p>
+      <p>Sincerely,<br>PayPal Security Team</p>
+      <p><small>This is an automated message, please do not reply.</small></p>
+    </div>
+    <div style="padding: 15px; font-size: 12px; color: #666; border-top: 1px solid #ddd; background-color: #f7f7f7; text-align: center;">
+      <p>PayPal, Inc. All rights reserved.</p>
+      <p>PayPal is committed to preventing fraudulent emails. Emails from PayPal will always contain your full name.</p>
+    </div>
+  </div>
+</body>
+</html>

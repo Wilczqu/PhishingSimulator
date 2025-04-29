@@ -1,22 +1,31 @@
-// server.js
 const express = require('express');
-const { Sequelize, DataTypes } = require('sequelize');
 const bodyParser = require('body-parser');
 const cors = require('cors');
+const path = require('path');
+const bcrypt = require('bcrypt');
 require('dotenv').config();
-const { Pool } = require('pg');
+
+// Import the models from the index file
+const db = require('./models');
+const { User, Target, Campaign, CampaignResult } = db;
+
+// Import routes
+const phishingRoutes = require('./routes/phishing');
+const templatesRoutes = require('./routes/templates');
+const campaignsRoutes = require('./routes/campaigns');
+const targetsRoutes = require('./routes/targets');
+const adminRoutes = require('./routes/admin');
+const statsRoutes = require('./routes/stats');
 
 const app = express();
+const saltRounds = 10;
+
+// Middleware
 app.use(bodyParser.json());
+app.use(express.static(path.join(__dirname, 'public')));
 
-// Add health check endpoint
-app.get('/health', (req, res) => {
-  res.sendStatus(200);
-});
-
-// Configure CORS to only allow POST from http://localhost:3000
+// Configure CORS
 app.use(
-  '/api',
   cors({
     origin: 'http://localhost:3000',
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
@@ -24,62 +33,41 @@ app.use(
   })
 );
 
-// Initialize Sequelize
-const sequelize = new Sequelize(
-  process.env.DB_NAME,
-  process.env.DB_USER,
-  process.env.DB_PASSWORD,
-  {
-    host: process.env.DB_HOST, // will resolve to "db" when using Docker
-    dialect: 'postgres',
-    port: 5432,
-  }
-);
-
-// Define the User model
-const User = sequelize.define('User', {
-  username: {
-    type: DataTypes.STRING,
-    unique: true,
-    allowNull: false,
-  },
-  password: {
-    type: DataTypes.STRING,
-    allowNull: false,
-  },
+// Health check endpoint
+app.get('/health', (req, res) => {
+  res.sendStatus(200);
 });
 
-// Sync models with the database
-sequelize
-  .sync()
-  .then(() => console.log('Database & tables created!'))
-  .catch((err) => console.error('Error syncing database:', err));
+// Set up API Routes
+app.use('/api/phishing', phishingRoutes);
+app.use('/api/campaigns', campaignsRoutes);
+app.use('/api/targets', targetsRoutes);
+app.use('/api/admin', adminRoutes);
+app.use('/api/stats', statsRoutes);
+app.use('/api/templates', templatesRoutes);
 
-// ----------------------------------------------
-// 1) Registration Endpoint
-// ----------------------------------------------
-const bcrypt = require('bcrypt');
-const saltRounds = 10;
+// Basic authentication endpoints with secure password handling
 app.post('/api/register', async (req, res) => {
   const { username, password } = req.body;
   try {
     const hashedPassword = await bcrypt.hash(password, saltRounds);
     const newUser = await User.create({ 
       username, 
-      password: hashedPassword 
+      password: hashedPassword,
+      role: 'user' // Default role
     });
     return res.status(201).json({ 
       success: true,
       message: 'Registration successful' 
     });
   } catch (err) {
-    console.error('Registration error:', err);
     if (err.name === 'SequelizeUniqueConstraintError') {
       return res.status(400).json({ 
         success: false, 
         error: 'Username already exists' 
       });
     }
+    console.error('Registration error:', err);
     return res.status(500).json({ 
       success: false, 
       error: 'Server error during registration' 
@@ -87,9 +75,6 @@ app.post('/api/register', async (req, res) => {
   }
 });
 
-// ----------------------------------------------
-// 2) Login Endpoint
-// ----------------------------------------------
 app.post('/api/login', async (req, res) => {
   const { username, password } = req.body;
   try {
@@ -103,24 +88,23 @@ app.post('/api/login', async (req, res) => {
       return res.status(400).json({ success: false, error: 'INCORRECT_PASSWORD' });
     }
 
-    return res.json({ success: true, message: 'Login successful' });
+    return res.json({ 
+      success: true, 
+      message: 'Login successful',
+      userId: user.id,
+      role: user.role || 'user'  // Return role for frontend authorization
+    });
   } catch (err) {
-    // ... error handling
+    console.error('Login error:', err);
+    return res.status(500).json({ success: false, error: 'Server error during login' });
   }
 });
 
-// ----------------------------------------------
-// 3) Start the Server
-// ----------------------------------------------
-// Remove the first server start block
-// const PORT = 5432; // Remove this
-// app.listen(PORT, () => { ... }); // Remove this
-
-// Keep the database connection function
+// Database and server initialization
 async function waitForDatabase(retries = 10, delay = 5000) {
   for (let i = 0; i < retries; i++) {
     try {
-      await sequelize.authenticate();
+      await db.sequelize.authenticate();
       console.log('Database connection established successfully.');
       return;
     } catch (err) {
@@ -131,23 +115,34 @@ async function waitForDatabase(retries = 10, delay = 5000) {
   throw new Error('Unable to connect to the database after multiple attempts.');
 }
 
-// Update the server initialization
 (async () => {
   try {
-    // Wait for database connection
     await waitForDatabase();
     
-    // Sync models after the DB is confirmed ready
-    await sequelize.sync();
-    console.log('Database & tables created!');
+    // Sync models with the database
+    await db.sequelize.sync({ alter: true }); // Use alter:true instead of force:false for safer migrations
+    console.log('Database & tables created/updated!');
+    
+    // Create default admin user if it doesn't exist
+    let adminUser = await User.findOne({ where: { username: 'admin' } });
+    if (!adminUser) {
+      // Create admin with hashed password
+      const hashedPassword = await bcrypt.hash('admin123', saltRounds);
+      adminUser = await User.create({
+        username: 'admin',
+        password: hashedPassword,
+        role: 'admin'
+      });
+      console.log('Default admin user created');
+    }
     
     // Start the server after successful DB connection
-    const PORT = process.env.PORT || 5050;  // Changed from 5432
+    const PORT = process.env.PORT || 5050;
     app.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);
     });
   } catch (error) {
-    console.error('Failed to start server:', error);
+    console.error('Error starting the server:', error);
     process.exit(1);
   }
 })();

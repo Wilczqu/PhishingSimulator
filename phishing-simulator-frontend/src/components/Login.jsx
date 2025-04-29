@@ -19,14 +19,26 @@ const Login = ({ onLogin, message }) => {
 
     try {
       const response = await axios.post('/api/login', { username, password });
-if (response.data.error === 'USER_NOT_FOUND') {
-  setErrorMsg('User does not exist');
-} else if (response.data.error === 'INCORRECT_PASSWORD') {
-  setErrorMsg('This login attempt failed due to incorrect password');
-} else {
-  // success
-}
-      
+      if (response.data.error === 'USER_NOT_FOUND') {
+        setErrorMsg('User does not exist');
+      } else if (response.data.error === 'INCORRECT_PASSWORD') {
+        setErrorMsg('This login attempt failed due to incorrect password');
+      } else {
+        // success
+        if (response.data.success) {
+          // Get user data from response
+          const userData = {
+            username: username,
+            role: response.data.role || 'user',
+            id: response.data.userId
+          };
+          
+          // Call the onLogin function passed as prop
+          onLogin(userData);
+          
+          // Redirect will be handled by parent component or a redirect in App.js
+        }
+      }
     } catch (err) {
       console.error(err);
       setErrorMsg('An error occurred while logging in.');

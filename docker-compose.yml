@@ -8,7 +8,7 @@ services:
       POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
       POSTGRES_DB: ${DB_NAME:-phishingdb}
     ports:
-      - "5432:5432"  # Changed to standard PostgreSQL port
+      - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./init.sql:/docker-entrypoint-initdb.d/init.sql
@@ -20,33 +20,44 @@ services:
 
   backend:
     build: ./phishing-simulator-backend
+    container_name: phishing-simulator-backend
+    restart: unless-stopped
     ports:
-      - "5050:5050"
+      - "8050:5050"  # Changed from 5051 to 8050
     environment:
       DB_HOST: db
       DB_USER: ${DB_USER:-postgres}
       DB_PASSWORD: ${DB_PASSWORD:-postgres}
       DB_NAME: ${DB_NAME:-phishingdb}
       DB_PORT: 5432
-      PORT: 5050  # Added explicit port configuration
+      PORT: 5050
+      BASE_URL: ${BASE_URL:-http://localhost:8050}  # Update to match new port
     depends_on:
       db:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5050/health"]  # Updated port
+      test: ["CMD", "curl", "-f", "http://localhost:5050/health"]
       interval: 30s
       timeout: 10s
       retries: 3
 
   frontend:
     build: ./phishing-simulator-frontend
+    container_name: phishing-simulator-frontend
+    restart: unless-stopped
     ports:
-      - "3000:3000"
+      - "3000:80"  # Map host port 3000 to container port 80 (Nginx)
     environment:
-      REACT_APP_API_URL: http://localhost:5050
+      # Use backend service name instead of localhost
+      REACT_APP_API_URL: http://backend:8050
     depends_on:
       backend:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:80"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
 volumes:
   postgres_data:
