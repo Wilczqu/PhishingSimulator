@@ -1,91 +1,127 @@
 // src/components/Login.jsx
-import React, { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import '../App.css';
 
-const Login = ({ onLogin, message }) => {
+const Login = ({ onLogin }) => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
-
-  // 1) Get location to check if we came from Register with success
+  const [isLoading, setIsLoading] = useState(false);
+  const navigate = useNavigate();
+  
+  // Get location to check if we came from Register with success
   const location = useLocation();
-  const registrationSuccess = location.state?.registrationSuccess;
+  const [registrationSuccess, setRegistrationSuccess] = useState(
+    location.state?.registrationSuccess || false
+  );
+
+  // Clear registration success message after 3 seconds
+  useEffect(() => {
+    let timer;
+    if (registrationSuccess) {
+      timer = setTimeout(() => {
+        setRegistrationSuccess(false);
+      }, 3000);
+    }
+    return () => {
+      if (timer) clearTimeout(timer);
+    };
+  }, [registrationSuccess]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setErrorMsg('');
+    setIsLoading(true);
 
     try {
+      console.log('Attempting login for:', username);
       const response = await axios.post('/api/login', { username, password });
-      if (response.data.error === 'USER_NOT_FOUND') {
-        setErrorMsg('User does not exist');
-      } else if (response.data.error === 'INCORRECT_PASSWORD') {
-        setErrorMsg('This login attempt failed due to incorrect password');
+      console.log('Login response:', response.data);
+
+      if (response.data.success) {
+        // Extract user data from response
+        const userData = {
+          id: response.data.user.id,
+          username: response.data.user.username,
+          role: response.data.user.role || 'user'
+        };
+        
+        console.log('Login successful, user data:', userData);
+        
+        // Call onLogin to update app state
+        onLogin(userData);
+        
+        // Redirect to home page
+        navigate('/home');
       } else {
-        // success
-        if (response.data.success) {
-          // Get user data from response
-          const userData = {
-            username: username,
-            role: response.data.role || 'user',
-            id: response.data.userId
-          };
-          
-          // Call the onLogin function passed as prop
-          onLogin(userData);
-          
-          // Redirect will be handled by parent component or a redirect in App.js
-        }
+        setErrorMsg(response.data.message || 'Login failed');
       }
     } catch (err) {
-      console.error(err);
-      setErrorMsg('An error occurred while logging in.');
+      console.error('Login error:', err);
+      if (err.response) {
+        // Check for auth error status codes
+        if (err.response.status === 401 || err.response.status === 403) {
+          setErrorMsg('Invalid username or password');
+        } else {
+          setErrorMsg(err.response.data?.message || 'Login failed');
+        }
+      } else {
+        setErrorMsg('An error occurred during login. Please try again.');
+      }
+    } finally {
+      setIsLoading(false);
     }
   };
 
   return (
-    <>
-      {/* Floating messages outside the container */}
+    <div className="container">
+      <h2>Login</h2>
+      
+      {/* Registration success message with auto-dismiss */}
+      {registrationSuccess && (
+        <div className="alert alert-success">
+          Registration successful! Please log in.
+        </div>
+      )}
+      
+      {/* Login error message */}
       {errorMsg && (
-        <div className="floating-error">
+        <div className="alert alert-danger">
           {errorMsg}
         </div>
       )}
-      {registrationSuccess && (
-        <div className="floating-success">
-          Registration successfully completed!
-        </div>
-      )}
-
-      <div className="container">
-        <h2>Login</h2>
-        {message && <p style={{ color: 'red' }}>{message}</p>}
-
-        <form onSubmit={handleSubmit}>
-          <input 
+      
+      <form onSubmit={handleSubmit}>
+        <div className="form-group">
+          <input
             type="text"
-            name="username"
             placeholder="Username"
             required
+            autoComplete="username"
             value={username}
-            onChange={e => setUsername(e.target.value)}
+            onChange={(e) => setUsername(e.target.value)}
+            disabled={isLoading}
           />
-          <input 
+        </div>
+        <div className="form-group">
+          <input
             type="password"
-            name="password"
             placeholder="Password"
             required
+            autoComplete="current-password"
             value={password}
-            onChange={e => setPassword(e.target.value)}
+            onChange={(e) => setPassword(e.target.value)}
+            disabled={isLoading}
           />
-          <button type="submit">Login</button>
-        </form>
-
-        <p>Don't have an account? <Link to="/register">Register here</Link></p>
-      </div>
-    </>
+        </div>
+        <button type="submit" disabled={isLoading}>
+          {isLoading ? 'Logging in...' : 'Login'}
+        </button>
+      </form>
+      <p>Don't have an account? <Link to="/register">Register here</Link></p>
+    </div>
   );
 };
 

@@ -5,25 +5,28 @@ import '../App.css';
 
 const Quizzes = ({ quizzes }) => {
   return (
-    <div>
-      <nav>
-        <ul>
-          <li><Link to="/home">Home</Link></li>
-          <li><Link to="/quizzes">Quizzes</Link></li>
-          <li><a href="#education">Education</a></li>
-          <li><a href="#gallery">Gallery</a></li>
-          <li><Link to="/logout">Logout</Link></li>
-        </ul>
-      </nav>
-      <div className="container">
-        <h2>Select a Quiz</h2>
-        <div className="quiz-options">
-          {Object.entries(quizzes).map(([quizId, quizName]) => (
-            <Link key={quizId} to={`/quiz/${quizId}`} className="quiz-btn">
-              {quizName}
-            </Link>
-          ))}
-        </div>
+    <div className="container">
+      <h2>Select a Quiz</h2>
+      <div className="row">
+        {Array.isArray(quizzes) && quizzes.length > 0 ? (
+          quizzes.map(quiz => (
+            <div className="col-md-4 mb-4" key={quiz.id}>
+              <div className="card custom-card h-100">
+                <div className="card-body">
+                  <h5 className="card-title">{quiz.title}</h5>
+                  {quiz.description && <p className="card-text">{quiz.description}</p>}
+                  <Link to={`/quiz/${quiz.id}`} className="btn btn-primary">
+                    Take Quiz
+                  </Link>
+                </div>
+              </div>
+            </div>
+          ))
+        ) : (
+          <div className="col-12">
+            <p>No quizzes available at this time.</p>
+          </div>
+        )}
       </div>
     </div>
   );

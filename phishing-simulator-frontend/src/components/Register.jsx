@@ -70,6 +70,7 @@ const Register = () => {
             placeholder="Username"
             required
             minLength="3"
+            autoComplete="username"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
             disabled={isLoading}
@@ -81,6 +82,7 @@ const Register = () => {
             placeholder="Password"
             required
             minLength="6"
+            autoComplete="new-password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             disabled={isLoading}

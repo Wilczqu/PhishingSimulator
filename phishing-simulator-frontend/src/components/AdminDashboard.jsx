@@ -12,6 +12,12 @@ import {
   Legend,
   ArcElement
 } from 'chart.js';
+import { 
+  generateCampaignChartData, 
+  generateQuizChartData,
+  barChartOptions,
+  pieChartOptions 
+} from '../utils/chartutil';
 
 // Register ChartJS components
 ChartJS.register(
@@ -101,52 +107,8 @@ const AdminDashboard = ({ user }) => {
   }
 
   // Charts data
-  const campaignChartData = {
-    labels: ['Sent', 'Opened', 'Clicked', 'Credentials'],
-    datasets: [
-      {
-        label: 'Campaign Statistics',
-        data: [
-          stats.emailsSent,
-          stats.emailsOpened,
-          stats.linksClicked,
-          stats.credentialsSubmitted
-        ],
-        backgroundColor: [
-          'rgba(54, 162, 235, 0.6)',
-          'rgba(75, 192, 192, 0.6)',
-          'rgba(255, 206, 86, 0.6)',
-          'rgba(255, 99, 132, 0.6)'
-        ],
-        borderColor: [
-          'rgba(54, 162, 235, 1)',
-          'rgba(75, 192, 192, 1)',
-          'rgba(255, 206, 86, 1)',
-          'rgba(255, 99, 132, 1)'
-        ],
-        borderWidth: 1
-      }
-    ]
-  };
-
-  const quizChartData = {
-    labels: ['Passed', 'Failed'],
-    datasets: [
-      {
-        label: 'Quiz Results',
-        data: [quizStats.passCount, quizStats.failCount],
-        backgroundColor: [
-          'rgba(75, 192, 192, 0.6)',
-          'rgba(255, 99, 132, 0.6)'
-        ],
-        borderColor: [
-          'rgba(75, 192, 192, 1)',
-          'rgba(255, 99, 132, 1)'
-        ],
-        borderWidth: 1
-      }
-    ]
-  };
+  const campaignChartData = generateCampaignChartData(stats);
+  const quizChartData = generateQuizChartData(quizStats);
 
   return (
     <div className="container mt-4">
@@ -193,7 +155,7 @@ const AdminDashboard = ({ user }) => {
               Campaign Statistics
             </div>
             <div className="card-body">
-              <Bar data={campaignChartData} />
+              <Bar data={campaignChartData} options={barChartOptions} />
             </div>
           </div>
         </div>
@@ -203,7 +165,7 @@ const AdminDashboard = ({ user }) => {
               Quiz Results
             </div>
             <div className="card-body">
-              <Pie data={quizChartData} />
+              <Pie data={quizChartData} options={pieChartOptions} />
             </div>
           </div>
         </div>

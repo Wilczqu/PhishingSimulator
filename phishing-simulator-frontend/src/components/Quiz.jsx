@@ -1,11 +1,33 @@
 // src/components/Quiz.jsx
-import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link, useNavigate, useParams } from 'react-router-dom';
+import axios from 'axios';
 import '../App.css';
 
-const Quiz = ({ quiz }) => {
+const Quiz = ({ user }) => {
   const navigate = useNavigate();
+  const { quizId } = useParams();
+  const [quiz, setQuiz] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [answers, setAnswers] = useState({});
+
+  // Fetch quiz data
+  useEffect(() => {
+    const fetchQuiz = async () => {
+      try {
+        const response = await axios.get(`/api/quizzes/${quizId}`);
+        setQuiz(response.data);
+        setLoading(false);
+      } catch (err) {
+        console.error("Error fetching quiz:", err);
+        setError("Failed to load quiz. Please try again later.");
+        setLoading(false);
+      }
+    };
+
+    fetchQuiz();
+  }, [quizId]);
 
   const handleOptionChange = (questionIndex, option) => {
     setAnswers(prev => ({ ...prev, [questionIndex]: option }));
@@ -14,11 +36,13 @@ const Quiz = ({ quiz }) => {
   const handleSubmit = (e) => {
     e.preventDefault();
 
+    if (!quiz || !quiz.questions) return;
+
     // Calculate score and prepare results array
-    let score = 0; // Initialize score
+    let score = 0;
     const results = quiz.questions.map(([questionText, answerOptions, correctAnswer, explanation, type], index) => {
-      const userAnswer = answers[index] || ''; // Get the user's answer for this question
-      if (userAnswer === correctAnswer) score += 1; // Increment score for correct answers
+      const userAnswer = answers[index] || '';
+      if (userAnswer === correctAnswer) score += 1;
 
       return {
         questionText,
@@ -26,30 +50,39 @@ const Quiz = ({ quiz }) => {
         correctAnswer,
         userAnswer,
         explanation,
-        type, // Add type for categorization
+        type,
       };
     });
 
-    // Navigate to results page with calculated score and results
-    navigate(`/quiz_results/${quiz.id}`, {
-      state: { score, total: quiz.questions.length, results }, // Pass score, total, and results
+    // Submit result to backend if user is logged in
+    if (user && user.id) {
+      axios.post(`/api/quizzes/${quizId}/submit`, {
+        userId: user.id,
+        score,
+        totalQuestions: quiz.questions.length,
+        passed: score >= (quiz.questions.length / 2), // Pass if score is at least 50%
+        answers: results
+      }).catch(err => {
+        console.error("Error submitting quiz result:", err);
+      });
+    }
+
+    // Navigate to results page
+    navigate(`/quiz_results/${quizId}`, {
+      state: { score, total: quiz.questions.length, results },
     });
   };
 
+  if (loading) return <div className="container">Loading quiz...</div>;
+  if (error) return <div className="container">{error}</div>;
+  if (!quiz) return <div className="container">Quiz not found.</div>;
+
   return (
     <div>
-      <nav>
-        <ul>
-          <li><Link to="/home">Home</Link></li>
-          <li><Link to="/quizzes">Quizzes</Link></li>
-          <li><a href="#education">Education</a></li>
-          <li><a href="#gallery">Gallery</a></li>
-          <li><Link to="/logout">Logout</Link></li>
-        </ul>
-      </nav>
-
       <div className="container">
         <h2>{quiz.title}</h2>
+        {quiz.description && <p>{quiz.description}</p>}
+        
         <form onSubmit={handleSubmit}>
           {quiz.questions.map((question_data, i) => (
             <div className="quiz-question" key={i}>
@@ -69,7 +102,7 @@ const Quiz = ({ quiz }) => {
               <br />
             </div>
           ))}
-          <button type="submit">Submit Quiz</button>
+          <button type="submit" className="btn btn-primary">Submit Quiz</button>
         </form>
       </div>
     </div>
