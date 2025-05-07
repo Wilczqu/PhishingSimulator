@@ -7,7 +7,8 @@ COPY package*.json ./
 RUN npm ci
 
 # Install additional required dependencies that might not be in package.json
-RUN npm install --save react-bootstrap bootstrap chart.js react-chartjs-2 axios react-router-dom
+# Add bootstrap-icons to the list
+RUN npm install --save react-bootstrap bootstrap bootstrap-icons chart.js react-chartjs-2 axios react-router-dom
 
 # Copy the rest of the code
 COPY . .

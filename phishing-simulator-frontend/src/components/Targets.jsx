@@ -4,7 +4,7 @@ import axios from 'axios';
 import Navbar from './Navbar';
 import { Modal, Button } from 'react-bootstrap';
 
-const Targets = () => {
+const Targets = ({ user }) => {
   const [targets, setTargets] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -75,7 +75,7 @@ const Targets = () => {
   
   return (
     <div>
-      <Navbar activePage="targets" />
+      <Navbar activePage="targets" user={user} />
       
       <div className="container mt-4">
         <div className="row">
@@ -130,7 +130,10 @@ const Targets = () => {
                             <td>
                               <button 
                                 className="btn btn-sm btn-outline-primary"
-                                onClick={() => navigate(`/edit-target/${target.id}`)}
+                                onClick={() => {
+                                  console.log(`Navigating to /edit-target/${target.id}`);
+                                  navigate(`/edit-target/${target.id}`);
+                                }}
                               >
                                 Edit
                               </button>

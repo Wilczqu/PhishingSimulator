@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
+import Navbar from './Navbar';
 import { Bar, Pie } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
@@ -31,7 +32,6 @@ ChartJS.register(
 );
 
 const AdminDashboard = ({ user }) => {
-  // Move all useState calls to the top level, outside of any conditions
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [campaigns, setCampaigns] = useState([]);
@@ -64,8 +64,8 @@ const AdminDashboard = ({ user }) => {
         const campaignsResponse = await axios.get('/api/campaigns/recent');
         setCampaigns(campaignsResponse.data);
 
-        // Fetch overall stats
-        const statsResponse = await axios.get('/api/stats');
+        // Fetch overall stats - FIXED: Using the correct endpoint
+        const statsResponse = await axios.get('/api/stats/overall');
         setStats({
           totalTargets: statsResponse.data.totalTargets || 0,
           emailsSent: statsResponse.data.emailsSent || 0,
@@ -78,13 +78,25 @@ const AdminDashboard = ({ user }) => {
         const quizzesResponse = await axios.get('/api/quizzes');
         setQuizzes(quizzesResponse.data);
 
-        // Fetch quiz stats
-        const quizStatsResponse = await axios.get('/api/quiz-stats');
+        // Fetch quiz stats - FIXED: Using the correct endpoint
+        const quizStatsResponse = await axios.get('/api/stats/quizzes');
         setQuizStats({
-          totalAttempts: quizStatsResponse.data.totalAttempts || 0,
-          passCount: quizStatsResponse.data.passCount || 0,
-          failCount: quizStatsResponse.data.failCount || 0
+          totalAttempts: quizStatsResponse.data.reduce((sum, quiz) => sum + (quiz.attempts || 0), 0),
+          passCount: quizStatsResponse.data.reduce((sum, quiz) => sum + (quiz.passed || 0), 0),
+          failCount: quizStatsResponse.data.reduce((sum, quiz) => sum + ((quiz.attempts || 0) - (quiz.passed || 0)), 0)
         });
+
+        // Update quizzes with stats data
+        setQuizzes(prevQuizzes => 
+          prevQuizzes.map(quiz => {
+            const quizWithStats = quizStatsResponse.data.find(q => q.id === quiz.id) || {};
+            return {
+              ...quiz,
+              attempts: quizWithStats.attempts || 0,
+              passed: quizWithStats.passed || 0
+            };
+          })
+        );
 
         setLoading(false);
       } catch (err) {
@@ -95,7 +107,7 @@ const AdminDashboard = ({ user }) => {
     };
 
     fetchData();
-  }, [user]); // Add user as a dependency
+  }, [user]); 
 
   // Handle unauthorized or loading states
   if (loading) {
@@ -112,6 +124,7 @@ const AdminDashboard = ({ user }) => {
 
   return (
     <div className="container mt-4">
+      <Navbar activePage="admin" user={user} />
       <h1>Admin Dashboard</h1>
       <div className="row mb-4">
         <div className="col-md-3">
@@ -191,7 +204,7 @@ const AdminDashboard = ({ user }) => {
                   {campaigns.length > 0 ? (
                     campaigns.map(campaign => (
                       <tr key={campaign.id}>
-                        <td><Link to={`/campaigns/${campaign.id}`}>{campaign.name}</Link></td>
+                        <td><Link to={`/campaign/${campaign.id}`}>{campaign.name}</Link></td>
                         <td>{campaign.status}</td>
                         <td>{new Date(campaign.createdAt).toLocaleDateString()}</td>
                       </tr>
@@ -210,7 +223,7 @@ const AdminDashboard = ({ user }) => {
           <div className="card">
             <div className="card-header d-flex justify-content-between align-items-center">
               <span>Quizzes</span>
-              <Link to="/quizzes/manage" className="btn btn-sm btn-primary">Manage Quizzes</Link>
+              <Link to="/quizzes" className="btn btn-sm btn-primary">Manage Quizzes</Link>
             </div>
             <div className="card-body">
               <table className="table table-striped">
@@ -225,10 +238,10 @@ const AdminDashboard = ({ user }) => {
                   {quizzes.length > 0 ? (
                     quizzes.map(quiz => (
                       <tr key={quiz.id}>
-                        <td><Link to={`/quizzes/${quiz.id}`}>{quiz.title}</Link></td>
+                        <td><Link to={`/quiz/${quiz.id}`}>{quiz.title}</Link></td>
                         <td>{quiz.attempts || 0}</td>
                         <td>
-                          {quiz.attempts ? 
+                          {quiz.attempts > 0 ? 
                             `${Math.round((quiz.passed / quiz.attempts) * 100)}%` : 
                             '0%'}
                         </td>

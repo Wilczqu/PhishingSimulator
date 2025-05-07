@@ -4,11 +4,7 @@ module.exports = (sequelize, DataTypes) => {
   const QuizResult = sequelize.define('QuizResult', {
     userId: {
       type: DataTypes.INTEGER,
-      allowNull: false,
-      references: {
-        model: 'Users',
-        key: 'id'
-      }
+      allowNull: false
     },
     quizId: {
       type: DataTypes.INTEGER,
@@ -34,17 +30,21 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.DATE,
       defaultValue: DataTypes.NOW
     }
-  }, {
-    timestamps: true
   });
-
+  
   QuizResult.associate = (models) => {
     // QuizResult belongs to a User
     QuizResult.belongsTo(models.User, {
       foreignKey: 'userId',
       as: 'user'
     });
+    
+    // QuizResult belongs to a Quiz
+    QuizResult.belongsTo(models.Quiz, {
+      foreignKey: 'quizId',
+      as: 'quiz'
+    });
   };
-
+  
   return QuizResult;
 };

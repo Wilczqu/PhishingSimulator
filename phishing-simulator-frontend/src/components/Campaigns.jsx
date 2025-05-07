@@ -7,7 +7,7 @@ import Button from 'react-bootstrap/Button';
 import Alert from 'react-bootstrap/Alert';
 import TemplateSelector from './TemplateSelector'; // Import the TemplateSelector component
 
-const Campaigns = () => {
+const Campaigns = ({ user }) => {
   const [campaigns, setCampaigns] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -71,7 +71,7 @@ const Campaigns = () => {
 
   return (
     <div>
-      <Navbar activePage="campaigns" />
+      <Navbar activePage="campaigns" user={user} />
       
       <div className="container mt-4">
         <div className="d-flex justify-content-between align-items-center mb-4">

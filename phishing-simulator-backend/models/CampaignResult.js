@@ -69,6 +69,11 @@ module.exports = (sequelize) => {
       foreignKey: 'target_id',
       as: 'target'
     });
+    
+    CampaignResult.belongsTo(models.User, {
+      foreignKey: 'user_id',
+      as: 'user'
+    });
   };
 
   return CampaignResult;

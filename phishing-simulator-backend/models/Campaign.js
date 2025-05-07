@@ -32,5 +32,13 @@ module.exports = (sequelize) => {
     }
   });
   
+  // Add this association function
+  Campaign.associate = (models) => {
+    Campaign.hasMany(models.CampaignResult, {
+      foreignKey: 'campaign_id',
+      as: 'results'
+    });
+  };
+  
   return Campaign;
 };

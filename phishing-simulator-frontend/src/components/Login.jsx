@@ -48,8 +48,6 @@ const Login = ({ onLogin }) => {
           role: response.data.user.role || 'user'
         };
         
-        console.log('Login successful, user data:', userData);
-        
         // Call onLogin to update app state
         onLogin(userData);
         
@@ -76,51 +74,76 @@ const Login = ({ onLogin }) => {
   };
 
   return (
-    <div className="container">
-      <h2>Login</h2>
-      
-      {/* Registration success message with auto-dismiss */}
-      {registrationSuccess && (
-        <div className="alert alert-success">
-          Registration successful! Please log in.
+    <div className="login-container">
+      <div className="login-card">
+        <div className="login-header">
+          <i className="bi bi-shield-lock"></i>
+          <h2>Phishing Simulator</h2>
+          <p className="login-subtitle">Sign in to your account</p>
         </div>
-      )}
-      
-      {/* Login error message */}
-      {errorMsg && (
-        <div className="alert alert-danger">
-          {errorMsg}
-        </div>
-      )}
-      
-      <form onSubmit={handleSubmit}>
-        <div className="form-group">
-          <input
-            type="text"
-            placeholder="Username"
-            required
-            autoComplete="username"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
+        
+        {registrationSuccess && (
+          <div className="alert alert-success">
+            Registration successful! Please log in.
+          </div>
+        )}
+        
+        {errorMsg && (
+          <div className="alert alert-danger">
+            <i className="bi bi-exclamation-triangle-fill me-2"></i>
+            {errorMsg}
+          </div>
+        )}
+        
+        <form onSubmit={handleSubmit} className="login-form">
+          <div className="form-floating mb-3">
+            <input
+              type="text"
+              className="form-control"
+              id="username"
+              placeholder="Username"
+              required
+              autoComplete="username"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              disabled={isLoading}
+            />
+            <label htmlFor="username">Username</label>
+          </div>
+          
+          <div className="form-floating mb-3">
+            <input
+              type="password"
+              className="form-control"
+              id="password"
+              placeholder="Password"
+              required
+              autoComplete="current-password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              disabled={isLoading}
+            />
+            <label htmlFor="password">Password</label>
+          </div>
+          
+          <button 
+            type="submit" 
+            className="btn btn-primary w-100" 
             disabled={isLoading}
-          />
+          >
+            {isLoading ? (
+              <>
+                <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                Signing in...
+              </>
+            ) : 'Sign In'}
+          </button>
+        </form>
+        
+        <div className="login-footer">
+          <p>Don't have an account? <Link to="/register">Register here</Link></p>
         </div>
-        <div className="form-group">
-          <input
-            type="password"
-            placeholder="Password"
-            required
-            autoComplete="current-password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            disabled={isLoading}
-          />
-        </div>
-        <button type="submit" disabled={isLoading}>
-          {isLoading ? 'Logging in...' : 'Login'}
-        </button>
-      </form>
-      <p>Don't have an account? <Link to="/register">Register here</Link></p>
+      </div>
     </div>
   );
 };

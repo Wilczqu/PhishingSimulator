@@ -17,5 +17,12 @@ module.exports = (sequelize) => {
     }
   });
   
+  Target.associate = (models) => {
+    Target.hasMany(models.CampaignResult, { 
+      foreignKey: 'target_id',
+      as: 'results'
+    });
+  };
+
   return Target;
 };

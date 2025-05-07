@@ -5,7 +5,7 @@ import { Bar } from 'react-chartjs-2';
 import Navbar from './Navbar';
 import 'chart.js/auto';
 
-const Reports = () => {
+const Reports = ({ user }) => {
   const [campaigns, setCampaigns] = useState([]);
   const [loading, setLoading] = useState(true);
   const [overallStats, setOverallStats] = useState({
@@ -17,15 +17,23 @@ const Reports = () => {
   });
   
   useEffect(() => {
-    Promise.all([
-      fetchCampaigns(),
-      fetchOverallStats()
-    ]);
-  }, []);
+    if (user && user.id) {
+      Promise.all([
+        fetchCampaigns(),
+        fetchOverallStats()
+      ]);
+    }
+  }, [user]);
   
   const fetchCampaigns = async () => {
     try {
-      const response = await axios.get('/api/campaigns');
+      // Get campaigns specific to user role
+      const endpoint = user.role === 'admin' 
+        ? '/api/campaigns' 
+        : `/api/campaigns/user/${user.id}`;
+        
+      const response = await axios.get(endpoint);
+      
       // Only include active or completed campaigns
       const filteredCampaigns = response.data.filter(
         c => c.status === 'active' || c.status === 'completed'
@@ -40,7 +48,12 @@ const Reports = () => {
   
   const fetchOverallStats = async () => {
     try {
-      const response = await axios.get('/api/stats/overall');
+      // Get stats specific to user role
+      const endpoint = user.role === 'admin' 
+        ? '/api/stats/overall' 
+        : `/api/stats/user/${user.id}`;
+        
+      const response = await axios.get(endpoint);
       setOverallStats(response.data);
     } catch (error) {
       console.error('Error fetching overall stats:', error);
@@ -53,21 +66,23 @@ const Reports = () => {
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   };
   
-  // Calculate overall percentages
+  // Calculate overall percentages safely to avoid NaN
   const openRate = overallStats.emailsSent > 0 ? 
     (overallStats.emailsOpened / overallStats.emailsSent * 100).toFixed(1) : 0;
+    
   const clickRate = overallStats.emailsOpened > 0 ? 
     (overallStats.linksClicked / overallStats.emailsOpened * 100).toFixed(1) : 0;
+    
   const submissionRate = overallStats.linksClicked > 0 ? 
     (overallStats.credentialsSubmitted / overallStats.linksClicked * 100).toFixed(1) : 0;
-  
-  // Overall chart data
+
+  // Use Number() to convert string percentages to numbers for chart data
   const chartData = {
     labels: ['Email Open Rate', 'Link Click Rate', 'Submission Rate'],
     datasets: [
       {
         label: 'Percentage (%)',
-        data: [openRate, clickRate, submissionRate],
+        data: [Number(openRate), Number(clickRate), Number(submissionRate)],
         backgroundColor: [
           'rgba(255, 206, 86, 0.8)',
           'rgba(54, 162, 235, 0.8)',
@@ -85,7 +100,7 @@ const Reports = () => {
   
   return (
     <div>
-      <Navbar activePage="reports" />
+      <Navbar activePage="reports" user={user} />
       
       <div className="container mt-4">
         <div className="row">

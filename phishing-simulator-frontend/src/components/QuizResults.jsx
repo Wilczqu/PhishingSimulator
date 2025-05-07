@@ -1,11 +1,12 @@
 // src/components/QuizResults.jsx
 import React from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { useLocation, Link } from 'react-router-dom'; // Add Link here
+import Navbar from './Navbar';
 import '../App.css';
 
-const QuizResults = () => {
+const QuizResults = ({ user }) => {
   const location = useLocation();
-  const { score, total, results } = location.state;
+  const { score, total, results } = location.state || { score: 0, total: 0, results: [] };
 
   // Initialize categories with default values
   const categories = {
@@ -30,15 +31,7 @@ const QuizResults = () => {
 
   return (
     <div>
-      <nav>
-        <ul>
-          <li><Link to="/home">Home</Link></li>
-          <li><Link to="/quizzes">Quizzes</Link></li>
-          <li><a href="#education">Education</a></li>
-          <li><a href="#gallery">Gallery</a></li>
-          <li><Link to="/logout">Logout</Link></li>
-        </ul>
-      </nav>
+      <Navbar activePage="quiz" user={user} />
       <div className="container">
         <h2>Quiz Results</h2>
         <p>You got <strong>{score}/{total}</strong> correct.</p>

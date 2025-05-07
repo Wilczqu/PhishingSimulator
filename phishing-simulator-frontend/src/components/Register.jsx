@@ -35,10 +35,11 @@ const Register = () => {
     }
 
     try {
-      // Using relative URL path instead of hardcoded localhost address
+      // Force role to be 'user', never allow self-registration as admin
       const response = await axios.post('/api/register', {
         username,
-        password
+        password,
+        role: 'user' // Always register as regular user
       });
 
       if (response.data.success) {

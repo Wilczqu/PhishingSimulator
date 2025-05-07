@@ -16,8 +16,12 @@ const campaignsRoutes = require('./routes/campaigns');
 const targetsRoutes = require('./routes/targets');
 const adminRoutes = require('./routes/admin');
 const statsRoutes = require('./routes/stats');
-// Add this with your other require statements
 const quizzesRoutes = require('./routes/quizzes');
+const userRoutes = require('./routes/users');
+const authRoutes = require('./routes/auth');
+
+// Import seedAdminUser ONCE at the top
+const seedAdminUser = require('./seeders/create-admin-user');
 
 const app = express();
 const saltRounds = 10;
@@ -27,7 +31,6 @@ app.use(bodyParser.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Configure CORS
-// Add Docker service names to allowed origins
 app.use(
   cors({
     origin: ['http://localhost:3000', 'http://localhost:8080', 'http://frontend', 'http://backend:5050'],
@@ -48,34 +51,51 @@ app.use('/api/targets', targetsRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/stats', statsRoutes);
 app.use('/api/templates', templatesRoutes);
-// Add this with your other app.use statements
 app.use('/api/quizzes', quizzesRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/auth', authRoutes);
+
+// Add this to server.js
+app.use('/admin', adminRoutes);
+
+// Update the registration endpoint:
 
 app.post('/api/register', async (req, res) => {
-  const { username, password } = req.body;
   try {
-    const hashedPassword = await bcrypt.hash(password, saltRounds);
-    const newUser = await User.create({ 
-      username, 
-      password: hashedPassword,
-      role: 'user' // Default role
-    });
-    return res.status(201).json({ 
-      success: true,
-      message: 'Registration successful' 
-    });
-  } catch (err) {
-    if (err.name === 'SequelizeUniqueConstraintError') {
-      return res.status(400).json({ 
-        success: false, 
-        error: 'Username already exists' 
-      });
+    const { username, password } = req.body;
+    
+    // Check if username already exists
+    const existingUser = await User.findOne({ where: { username } });
+    if (existingUser) {
+      return res.status(400).json({ error: 'Username already exists' });
     }
-    console.error('Registration error:', err);
-    return res.status(500).json({ 
-      success: false, 
-      error: 'Server error during registration' 
+    
+    // Hash password
+    const hashedPassword = await bcrypt.hash(password, saltRounds);
+    
+    // Create new user - always as regular user regardless of what was sent
+    const newUser = await User.create({
+      username,
+      password: hashedPassword,
+      role: 'user', // Force role to be 'user'
+      active: true
     });
+    
+    // Remove password from response
+    const userResponse = {
+      id: newUser.id,
+      username: newUser.username,
+      role: newUser.role
+    };
+    
+    res.status(201).json({
+      success: true,
+      message: 'User registered successfully',
+      user: userResponse
+    });
+  } catch (error) {
+    console.error('Registration error:', error);
+    res.status(500).json({ error: 'Registration failed' });
   }
 });
 
@@ -143,6 +163,11 @@ async function waitForDatabase(retries = 10, delay = 5000) {
       });
       console.log('Default admin user created');
     }
+
+    // Seed admin user
+    await seedAdminUser();
+    console.log('Admin user seeding completed');
+    
     // Add this after creating the admin user in your initialization function
     // Create default quiz if it doesn't exist
     let emailQuiz = await db.Quiz.findOne({ where: { title: 'Email Quiz' } });
@@ -241,6 +266,9 @@ async function waitForDatabase(retries = 10, delay = 5000) {
       });
       console.log('Default Email Quiz created');
     }
+    
+    // Add this near the end of your server.js file, after DB sync
+
     
     // Start the server after successful DB connection
     const PORT = process.env.PORT || 5050;

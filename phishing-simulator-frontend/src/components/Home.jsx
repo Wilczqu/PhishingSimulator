@@ -4,9 +4,12 @@ import Navbar from './Navbar';
 import '../App.css';
 
 const Home = ({ user }) => {
+  // Check if user has admin role
+  const isAdmin = user && user.role === 'admin';
+  
   return (
     <div>
-      <Navbar activePage="home" />
+      <Navbar activePage="home" user={user} />
       
       <div className="container mt-4">
         <header className="text-center mb-5">
@@ -15,6 +18,7 @@ const Home = ({ user }) => {
           {user && <p className="welcome-message">Hello, {user.username}!</p>}
         </header>
 
+        {/* Educational content - visible to all users */}
         <section className="info-section mb-5" id="education">
           <h2>What is Phishing?</h2>
           <p>
@@ -99,8 +103,25 @@ const Home = ({ user }) => {
             </div>
           </div>
         </section>
+
+        {/* Admin dashboard link - only visible to admin users */}
+        {isAdmin && (
+          <section className="admin-section mb-5">
+            <div className="card bg-light">
+              <div className="card-body">
+                <h2 className="card-title">Administration</h2>
+                <p className="card-text">Access administration tools and reports.</p>
+                <div className="d-flex gap-2">
+                  <Link to="/admin" className="btn btn-primary">Admin Dashboard</Link>
+                  <Link to="/campaigns" className="btn btn-outline-primary">Manage Campaigns</Link>
+                  <Link to="/targets" className="btn btn-outline-primary">Manage Targets</Link>
+                  <Link to="/reports" className="btn btn-outline-primary">View Reports</Link>
+                </div>
+              </div>
+            </div>
+          </section>
+        )}
         
-        {/* Security Best Practices Section */}
         <section className="best-practices mb-5">
           <h2>Security Best Practices</h2>
           <div className="row mt-4">

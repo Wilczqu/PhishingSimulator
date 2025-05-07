@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import axios from 'axios';
+import Navbar from './Navbar'; // Add this import
 import '../App.css';
 
 const Quiz = ({ user }) => {
@@ -79,6 +80,7 @@ const Quiz = ({ user }) => {
 
   return (
     <div>
+      <Navbar activePage="quiz" user={user} />
       <div className="container">
         <h2>{quiz.title}</h2>
         {quiz.description && <p>{quiz.description}</p>}

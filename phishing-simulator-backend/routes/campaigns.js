@@ -35,21 +35,46 @@ router.get('/recent', async (req, res) => {
 // Get a specific campaign
 router.get('/:id', async (req, res) => {
   try {
-    const campaign = await Campaign.findByPk(req.params.id, {
-      include: [
-        {
-          model: CampaignResult,
-          as: 'results',
-          include: [
-            {
-              model: Target,
-              as: 'target',
-              attributes: ['id', 'name', 'email', 'department']
-            }
-          ]
-        }
-      ]
-    });
+    // First try to get the campaign without associations
+    const campaign = await Campaign.findByPk(req.params.id);
+    
+    if (!campaign) {
+      return res.status(404).json({ error: 'Campaign not found' });
+    }
+    
+    // Now try to get the results separately
+    try {
+      const results = await CampaignResult.findAll({
+        where: { campaign_id: req.params.id },
+        include: [
+          {
+            model: Target,
+            as: 'target',
+            attributes: ['id', 'name', 'email', 'department']
+          }
+        ]
+      });
+      
+      // Combine the data
+      const campaignData = campaign.toJSON();
+      campaignData.results = results;
+      
+      res.json(campaignData);
+    } catch (resultError) {
+      console.error('Error fetching campaign results:', resultError);
+      // Return just the campaign without results
+      res.json(campaign);
+    }
+  } catch (error) {
+    console.error('Error fetching campaign:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Get a campaign without associations (fallback for when eager loading fails)
+router.get('/:id/basic', async (req, res) => {
+  try {
+    const campaign = await Campaign.findByPk(req.params.id);
     
     if (!campaign) {
       return res.status(404).json({ error: 'Campaign not found' });
@@ -57,7 +82,7 @@ router.get('/:id', async (req, res) => {
     
     res.json(campaign);
   } catch (error) {
-    console.error('Error fetching campaign:', error);
+    console.error('Error fetching basic campaign:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -305,6 +330,22 @@ router.get('/:id/stats', async (req, res) => {
     res.json(stats[0]);
   } catch (error) {
     console.error('Error fetching campaign statistics:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Get campaigns for specific user
+router.get('/user/:id', async (req, res) => {
+  try {
+    const userId = req.params.id;
+    const campaigns = await Campaign.findAll({
+      where: { userId: userId },
+      order: [['createdAt', 'DESC']]
+    });
+    
+    res.json(campaigns);
+  } catch (error) {
+    console.error('Error fetching user campaigns:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
