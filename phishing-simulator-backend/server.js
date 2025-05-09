@@ -2,7 +2,7 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const cors = require('cors');
 const path = require('path');
-const bcrypt = require('bcrypt');
+const bcryptjs = require('bcryptjs'); // Changed to bcryptjs
 require('dotenv').config();
 
 // Import the models from the index file
@@ -71,7 +71,7 @@ app.post('/api/register', async (req, res) => {
     }
     
     // Hash password
-    const hashedPassword = await bcrypt.hash(password, saltRounds);
+    const hashedPassword = await bcryptjs.hash(password, saltRounds);
     
     // Create new user - always as regular user regardless of what was sent
     const newUser = await User.create({
@@ -107,7 +107,7 @@ app.post('/api/login', async (req, res) => {
       return res.status(400).json({ success: false, error: 'USER_NOT_FOUND' });
     }
 
-    const passwordMatch = await bcrypt.compare(password, user.password);
+    const passwordMatch = await bcryptjs.compare(password, user.password);
     if (!passwordMatch) {
       return res.status(400).json({ success: false, error: 'INCORRECT_PASSWORD' });
     }
@@ -155,7 +155,8 @@ async function waitForDatabase(retries = 10, delay = 5000) {
     let adminUser = await User.findOne({ where: { username: 'admin' } });
     if (!adminUser) {
       // Create admin with hashed password
-      const hashedPassword = await bcrypt.hash('admin123', saltRounds);
+      const adminPassword = process.env.ADMIN_PASSWORD || 'admintud'; // Use env variable
+      const hashedPassword = await bcryptjs.hash(adminPassword, saltRounds);
       adminUser = await User.create({
         username: 'admin',
         password: hashedPassword,
@@ -165,7 +166,7 @@ async function waitForDatabase(retries = 10, delay = 5000) {
     }
 
     // Seed admin user
-    await seedAdminUser();
+    await seedAdminUser(); // Await the function call
     console.log('Admin user seeding completed');
     
     // Add this after creating the admin user in your initialization function

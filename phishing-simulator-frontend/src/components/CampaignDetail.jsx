@@ -2,13 +2,17 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import axios from 'axios';
 import Navbar from './Navbar';
-import { Container, Row, Col, Card, Badge, Table, Spinner, Alert, Button } from 'react-bootstrap';
+import { Container, Row, Col, Card, Badge, Table, Spinner, Alert, Button, Form } from 'react-bootstrap';
 
 const CampaignDetail = ({ user }) => {
   const { id } = useParams();
   const [campaign, setCampaign] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [sending, setSending] = useState(false);
+  const [selectedTargetId, setSelectedTargetId] = useState(''); // Add selectedTargetId state
+  const [targets, setTargets] = useState([]); // Add targets state
+  const [successMessage, setSuccessMessage] = useState(''); // Add success message state
 
   useEffect(() => {
     const fetchCampaignDetails = async () => {
@@ -35,8 +39,45 @@ const CampaignDetail = ({ user }) => {
       }
     };
 
+    const fetchTargets = async () => {
+      try {
+        const response = await axios.get('/api/targets');
+        setTargets(response.data);
+      } catch (error) {
+        console.error('Error fetching targets:', error);
+        setError('Failed to load targets');
+      }
+    };
+
     fetchCampaignDetails();
+    fetchTargets();
   }, [id]);
+
+  const handleSendCampaign = async () => {
+    setSending(true);
+    setError('');
+    setSuccessMessage('');
+
+    try {
+      if (!selectedTargetId) {
+        throw new Error('Please select a target first');
+      }
+
+      const response = await axios.post(`/api/campaigns/${id}/send`, {
+        targetId: selectedTargetId
+      });
+      
+      if (response.data.campaign) {
+        setCampaign(response.data.campaign);
+        setSuccessMessage('Campaign sent successfully!');
+      }
+    } catch (error) {
+      console.error('Error sending campaign:', error);
+      setError(error.response?.data?.message || 'Failed to send campaign');
+    } finally {
+      setSending(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -103,8 +144,54 @@ const CampaignDetail = ({ user }) => {
             <Link to={`/campaign/${id}/targets`} className="btn btn-primary">
               <i className="bi bi-people"></i> Manage Targets
             </Link>
+            {campaign.status === 'draft' && (
+              <div className="d-flex align-items-center gap-2">
+                <Form.Select
+                  value={selectedTargetId}
+                  onChange={(e) => setSelectedTargetId(e.target.value)}
+                  className="me-2"
+                  disabled={sending}
+                >
+                  <option value="">Select Target</option>
+                  {targets.map(target => (
+                    <option key={target.id} value={target.id}>
+                      {target.name} ({target.email})
+                    </option>
+                  ))}
+                </Form.Select>
+                <Button 
+                  variant="success" 
+                  onClick={handleSendCampaign} 
+                  disabled={sending || !selectedTargetId}
+                >
+                  {sending ? (
+                    <>
+                      <Spinner size="sm" className="me-2" /> 
+                      Sending...
+                    </>
+                  ) : (
+                    <>
+                      <i className="bi bi-send me-2"></i> 
+                      Send Campaign
+                    </>
+                  )}
+                </Button>
+              </div>
+            )}
           </div>
         </div>
+
+        {error && (
+          <Alert variant="danger" className="mt-3">
+            {error}
+          </Alert>
+        )}
+
+        {successMessage && (
+          <Alert variant="success" className="mt-3">
+            {successMessage}
+          </Alert>
+        )}
 
         <Row className="mb-4">
           <Col md={6}>

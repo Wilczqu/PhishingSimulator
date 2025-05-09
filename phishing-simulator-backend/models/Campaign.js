@@ -2,43 +2,28 @@ const { DataTypes } = require('sequelize');
 
 module.exports = (sequelize) => {
   const Campaign = sequelize.define('Campaign', {
-    name: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
-    template: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
-    subject: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
-    sender_name: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
-    sender_email: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
+    name: DataTypes.STRING,
+    subject: DataTypes.STRING,
+    template: DataTypes.TEXT,
     status: {
-      type: DataTypes.ENUM('draft', 'scheduled', 'active', 'completed'),
-      defaultValue: 'draft',
+      type: DataTypes.ENUM('draft', 'active', 'completed'),
+      defaultValue: 'draft'
     },
-    scheduled_date: {
-      type: DataTypes.DATE,
-      allowNull: true,
-    }
+    sender_name: DataTypes.STRING,
+    sender_email: DataTypes.STRING,
+    scheduled_date: DataTypes.DATE
+  }, {
+    // Add underscored option to use snake_case
+    underscored: true,
+    tableName: 'campaigns'
   });
-  
-  // Add this association function
-  Campaign.associate = (models) => {
+
+  Campaign.associate = function(models) {
     Campaign.hasMany(models.CampaignResult, {
-      foreignKey: 'campaign_id',
+      foreignKey: 'campaign_id', // Change to snake_case
       as: 'results'
     });
   };
-  
+
   return Campaign;
 };

@@ -19,6 +19,7 @@ import {
   barChartOptions,
   pieChartOptions 
 } from '../utils/chartutil';
+import { Table, Button } from 'react-bootstrap'; // Import Table and Button from react-bootstrap
 
 // Register ChartJS components
 ChartJS.register(
@@ -48,6 +49,7 @@ const AdminDashboard = ({ user }) => {
     passCount: 0,
     failCount: 0
   });
+  const [users, setUsers] = useState([]); // State to store users
 
   // Use a single useEffect for all data fetching
   useEffect(() => {
@@ -98,6 +100,10 @@ const AdminDashboard = ({ user }) => {
           })
         );
 
+        // Fetch users
+        const usersResponse = await axios.get('/api/users');
+        setUsers(usersResponse.data);
+
         setLoading(false);
       } catch (err) {
         console.error('Error fetching admin dashboard data:', err);
@@ -108,6 +114,22 @@ const AdminDashboard = ({ user }) => {
 
     fetchData();
   }, [user]); 
+
+  const handlePromoteToAdmin = async (userId) => {
+    try {
+      await axios.put(`/api/users/${userId}/role`, { role: 'admin' });
+      // Update the user's role in the local state
+      setUsers(prevUsers =>
+        prevUsers.map(u =>
+          u.id === userId ? { ...u, role: 'admin' } : u
+        )
+      );
+      alert('User promoted to admin!');
+    } catch (error) {
+      console.error('Error promoting user:', error);
+      alert('Failed to promote user');
+    }
+  };
 
   // Handle unauthorized or loading states
   if (loading) {
@@ -254,6 +276,43 @@ const AdminDashboard = ({ user }) => {
                   )}
                 </tbody>
               </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Users Table */}
+      <div className="row mt-4">
+        <div className="col-md-12">
+          <div className="card">
+            <div className="card-header">Registered Users</div>
+            <div className="card-body">
+              <Table striped bordered hover>
+                <thead>
+                  <tr>
+                    <th>Username</th>
+                    <th>Last Login</th>
+                    <th>Role</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {users.map(user => (
+                    <tr key={user.id}>
+                      <td>{user.username}</td>
+                      <td>{user.lastLogin ? new Date(user.lastLogin).toLocaleString() : 'Never'}</td>
+                      <td>{user.role}</td>
+                      <td>
+                        {user.role !== 'admin' && (
+                          <Button variant="success" onClick={() => handlePromoteToAdmin(user.id)}>
+                            Promote to Admin
+                          </Button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </Table>
             </div>
           </div>
         </div>

@@ -1,5 +1,5 @@
 # Build stage
-FROM node:23-slim AS build
+FROM node:23.11-slim AS build
 WORKDIR /app
 COPY package*.json ./
 
@@ -8,7 +8,7 @@ RUN npm ci
 
 # Install additional required dependencies that might not be in package.json
 # Add bootstrap-icons to the list
-RUN npm install --save react-bootstrap bootstrap bootstrap-icons chart.js react-chartjs-2 axios react-router-dom
+RUN npm install --save react-bootstrap bootstrap bootstrap-icons chart.js react-chartjs-2 axios react-router-dom 
 
 # Copy the rest of the code
 COPY . .

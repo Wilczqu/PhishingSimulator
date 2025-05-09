@@ -17,15 +17,13 @@ import Reports from './components/Reports';
 import UserResults from './components/UserResults';
 import UserManagement from './components/UserManagement'; // New component for admin to manage users
 import AdminLogin from './components/AdminLogin'; // Import AdminLogin component
+import Surprise from './components/Surprise'; // Import Surprise component
 import CampaignDetail from './components/CampaignDetail'; // Add this import at the top of App.jsx with your other imports
 import CampaignTargets from './components/CampaignTargets'; // Add this import
 
-// Style imports - Bootstrap should be imported before custom styles
-import 'bootstrap/dist/css/bootstrap.min.css';
-import 'bootstrap-icons/font/bootstrap-icons.css'; // Make sure this is included
+// import 'bootstrap-icons/font/bootstrap-icons.css'; // Moved to index.js
 import './App.css';
 
-// Page title component to update document title
 const PageTitle = ({ title }) => {
   useEffect(() => {
     document.title = `Phishing Simulator - ${title}`;
@@ -157,6 +155,8 @@ const AppContent = () => {
       <Route path="/admin/login" element={
         <><PageTitle title="Admin Login" /><AdminLogin onLogin={handleLogin} /></>
       } />
+      
+      <Route path="/surprise" element={<Surprise />} /> {/* Add Surprise route */}
       
       {/* Default route (not found) */}
       <Route path="*" element={<Navigate to="/" replace />} />

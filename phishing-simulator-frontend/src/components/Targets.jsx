@@ -2,18 +2,20 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import Navbar from './Navbar';
-import { Modal, Button } from 'react-bootstrap';
+import { Modal, Button, Form } from 'react-bootstrap';
 
 const Targets = ({ user }) => {
   const [targets, setTargets] = useState([]);
+  const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
-  const [newTarget, setNewTarget] = useState({ name: '', email: '', department: '' });
+  const [newTarget, setNewTarget] = useState({ name: '', email: '', department: '', userId: '' });
   const [successMessage, setSuccessMessage] = useState('');
   const navigate = useNavigate();
   
   useEffect(() => {
     fetchTargets();
+    fetchUsers();
   }, []);
   
   const fetchTargets = async () => {
@@ -26,6 +28,15 @@ const Targets = ({ user }) => {
       setLoading(false);
     }
   };
+
+  const fetchUsers = async () => {
+    try {
+      const response = await axios.get('/api/users');
+      setUsers(response.data.filter(user => user.role !== 'admin'));
+    } catch (error) {
+      console.error('Error fetching users:', error);
+    }
+  };
   
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -35,18 +46,31 @@ const Targets = ({ user }) => {
   const handleAddTarget = async (e) => {
     e.preventDefault();
     try {
-      await axios.post('/api/targets', newTarget);
-      setNewTarget({ name: '', email: '', department: '' });
+      // Validate input
+      if (!newTarget.name || !newTarget.email) {
+        throw new Error('Name and email are required fields');
+      }
+
+      const response = await axios.post('/api/targets', {
+        name: newTarget.name.trim(),
+        email: newTarget.email.trim().toLowerCase(),
+        department: newTarget.department?.trim() || null
+      });
+
+      setNewTarget({ name: '', email: '', department: '', userId: '' });
       setShowModal(false);
       setSuccessMessage('Target added successfully!');
-      fetchTargets();
+      fetchTargets(); // Refresh the targets list
       
-      // Clear success message after 3 seconds
       setTimeout(() => {
         setSuccessMessage('');
       }, 3000);
     } catch (error) {
       console.error('Error adding target:', error);
+      const errorMessage = error.response?.data?.error || 
+                          error.message || 
+                          'Failed to add target';
+      alert(errorMessage);
     }
   };
   
@@ -164,7 +188,7 @@ const Targets = ({ user }) => {
           <Modal.Title>Add New Target</Modal.Title>
         </Modal.Header>
         <Modal.Body>
-          <form onSubmit={handleAddTarget}>
+          <Form onSubmit={handleAddTarget}>
             <div className="mb-3">
               <label htmlFor="name" className="form-label">Full Name</label>
               <input 
@@ -200,6 +224,20 @@ const Targets = ({ user }) => {
                 onChange={handleInputChange}
               />
             </div>
+            <Form.Group className="mb-3">
+              <Form.Label>Assign User</Form.Label>
+              <Form.Control
+                as="select"
+                name="userId"
+                value={newTarget.userId}
+                onChange={handleInputChange}
+              >
+                <option value="">Select User</option>
+                {users.map(user => (
+                  <option key={user.id} value={user.id}>{user.username}</option>
+                ))}
+              </Form.Control>
+            </Form.Group>
             <div className="text-end">
               <Button variant="secondary" onClick={() => setShowModal(false)}>
                 Cancel
@@ -208,7 +246,7 @@ const Targets = ({ user }) => {
                 Add Target
               </Button>
             </div>
-          </form>
+          </Form>
         </Modal.Body>
       </Modal>
     </div>

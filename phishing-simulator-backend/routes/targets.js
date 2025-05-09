@@ -36,23 +36,38 @@ router.get('/:id', async (req, res) => {
 router.post('/', async (req, res) => {
   try {
     const { name, email, department } = req.body;
-    
+
+    // Validate required fields
+    if (!name || !email) {
+      return res.status(400).json({ 
+        error: 'Name and email are required fields' 
+      });
+    }
+
     // Check if email already exists
-    const existingTarget = await Target.findOne({ where: { email } });
+    const existingTarget = await Target.findOne({ 
+      where: { email: email.toLowerCase() } 
+    });
+    
     if (existingTarget) {
-      return res.status(400).json({ error: 'Email address already exists' });
+      return res.status(400).json({ 
+        error: 'Email address already exists' 
+      });
     }
     
     const target = await Target.create({
       name,
-      email,
-      department
+      email: email.toLowerCase(),
+      department: department || null
     });
     
     res.status(201).json(target);
   } catch (error) {
     console.error('Error creating target:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ 
+      error: 'Internal server error',
+      details: error.message 
+    });
   }
 });
 

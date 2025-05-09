@@ -15,8 +15,11 @@ module.exports = (sequelize) => {
       type: DataTypes.STRING,
       allowNull: true,
     }
+  }, {
+    underscored: true,
+    tableName: 'targets'
   });
-  
+
   Target.associate = (models) => {
     Target.hasMany(models.CampaignResult, { 
       foreignKey: 'target_id',

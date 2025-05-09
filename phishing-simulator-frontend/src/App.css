@@ -284,3 +284,28 @@ body .login-card {
   padding: 2.5rem !important;
   transition: all 0.3s ease !important;
 }
+
+/* Table styles */
+.user-management-table {
+  margin-top: 1rem;
+  border: 1px solid #dee2e6;
+  border-radius: 0.25rem;
+  box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+}
+
+.user-management-table th,
+.user-management-table td {
+  padding: 0.75rem;
+  vertical-align: top;
+  border-top: 1px solid #dee2e6;
+}
+
+.user-management-table thead th {
+  vertical-align: bottom;
+  border-bottom: 2px solid #dee2e6;
+  background-color: #f8f9fa;
+}
+
+.user-management-table tbody + tbody {
+  border-top: 2px solid #dee2e6;
+}

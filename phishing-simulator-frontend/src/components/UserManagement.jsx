@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import Navbar from './Navbar';
+import { useNavigate } from 'react-router-dom';
+import { Table, Button, Alert, Spinner } from 'react-bootstrap';
 
 const UserManagement = ({ user }) => {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [successMessage, setSuccessMessage] = useState('');
+  const navigate = useNavigate();
 
   useEffect(() => {
     fetchUsers();
@@ -28,12 +30,12 @@ const UserManagement = ({ user }) => {
     try {
       await axios.put(`/api/admin/users/${userId}/role`, { role: newRole });
       setSuccessMessage(`User role updated successfully!`);
-      
+
       // Update the local state
-      setUsers(users.map(u => 
+      setUsers(users.map(u =>
         u.id === userId ? { ...u, role: newRole } : u
       ));
-      
+
       // Clear message after 3 seconds
       setTimeout(() => {
         setSuccessMessage('');
@@ -41,7 +43,30 @@ const UserManagement = ({ user }) => {
     } catch (error) {
       console.error('Error updating user role:', error);
       setError(`Failed to update user role: ${error.response?.data?.message || error.message}`);
-      
+
+      // Clear error after 3 seconds
+      setTimeout(() => {
+        setError('');
+      }, 3000);
+    }
+  };
+
+  const handleDeleteUser = async (userId) => {
+    try {
+      await axios.delete(`/api/admin/users/${userId}`);
+      setSuccessMessage(`User deleted successfully!`);
+
+      // Update the local state
+      setUsers(users.filter(u => u.id !== userId));
+
+      // Clear message after 3 seconds
+      setTimeout(() => {
+        setSuccessMessage('');
+      }, 3000);
+    } catch (error) {
+      console.error('Error deleting user:', error);
+      setError(`Failed to delete user: ${error.response?.data?.message || error.message}`);
+
       // Clear error after 3 seconds
       setTimeout(() => {
         setError('');
@@ -52,17 +77,17 @@ const UserManagement = ({ user }) => {
   const formatDate = (dateString) => {
     if (!dateString) return 'N/A';
     const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { 
-      year: 'numeric', 
-      month: 'short', 
-      day: 'numeric' 
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
     });
   };
 
   return (
     <div>
-      <Navbar activePage="admin" user={user} />
-      
+      {/*<Navbar activePage="admin" user={user} />*/}
+
       <div className="container mt-4">
         <div className="card shadow-sm mb-4">
           <div className="card-header">
@@ -70,36 +95,24 @@ const UserManagement = ({ user }) => {
           </div>
           <div className="card-body">
             {successMessage && (
-              <div className="alert alert-success alert-dismissible fade show">
+              <Alert variant="success" dismissible onClose={() => setSuccessMessage('')}>
                 {successMessage}
-                <button 
-                  type="button" 
-                  className="btn-close" 
-                  onClick={() => setSuccessMessage('')}
-                ></button>
-              </div>
+              </Alert>
             )}
-            
+
             {error && (
-              <div className="alert alert-danger alert-dismissible fade show">
+              <Alert variant="danger" dismissible onClose={() => setError('')}>
                 {error}
-                <button 
-                  type="button" 
-                  className="btn-close" 
-                  onClick={() => setError('')}
-                ></button>
-              </div>
+              </Alert>
             )}
-            
+
             {loading ? (
               <div className="text-center">
-                <div className="spinner-border text-primary" role="status">
-                  <span className="visually-hidden">Loading...</span>
-                </div>
+                <Spinner animation="border" text="primary" />
               </div>
             ) : (
               <div className="table-responsive">
-                <table className="table table-hover">
+                <Table striped bordered hover className="user-management-table">
                   <thead>
                     <tr>
                       <th>Username</th>
@@ -114,9 +127,7 @@ const UserManagement = ({ user }) => {
                       <tr key={user.id}>
                         <td>{user.username}</td>
                         <td>
-                          <span className={`badge ${
-                            user.role === 'admin' ? 'bg-danger' : 'bg-primary'
-                          }`}>
+                          <span className={`badge ${user.role === 'admin' ? 'bg-danger' : 'bg-primary'}`}>
                             {user.role}
                           </span>
                         </td>
@@ -126,27 +137,43 @@ const UserManagement = ({ user }) => {
                           {user.username !== 'admintud' && (
                             <div className="btn-group">
                               {user.role === 'user' ? (
-                                <button
-                                  className="btn btn-sm btn-outline-danger"
+                                <Button
+                                  variant="outline-danger"
+                                  size="sm"
                                   onClick={() => handleRoleChange(user.id, 'admin')}
                                 >
                                   Make Admin
-                                </button>
+                                </Button>
                               ) : (
-                                <button
-                                  className="btn btn-sm btn-outline-secondary"
+                                <Button
+                                  variant="outline-secondary"
+                                  size="sm"
                                   onClick={() => handleRoleChange(user.id, 'user')}
                                 >
                                   Make User
-                                </button>
+                                </Button>
                               )}
+                              <Button
+                                variant="outline-info"
+                                size="sm"
+                                onClick={() => navigate(`/edit-user/${user.id}`)}
+                              >
+                                Edit
+                              </Button>
+                              <Button
+                                variant="outline-danger"
+                                size="sm"
+                                onClick={() => handleDeleteUser(user.id)}
+                              >
+                                Delete
+                              </Button>
                             </div>
                           )}
                         </td>
                       </tr>
                     ))}
                   </tbody>
-                </table>
+                </Table>
               </div>
             )}
           </div>

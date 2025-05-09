@@ -53,6 +53,13 @@ const Navbar = ({ activePage, user }) => {
                 </li>
               </>
             )}
+            
+            {/* Links visible only to regular users */}
+            {!isAdmin && user && (
+              <li className="nav-item">
+                <Link className={`nav-link ${activePage === 'surprise' ? 'active' : ''}`} to="/surprise">Surprise</Link>
+              </li>
+            )}
           </ul>
           <ul className="navbar-nav ms-auto">
             {/* Admin login link - always visible */}

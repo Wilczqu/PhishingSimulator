@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../models');
-const bcrypt = require('bcrypt');
+const bcryptjs = require('bcryptjs');
 
 // Login route
 router.post('/login', async (req, res) => {
@@ -12,8 +12,8 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ success: false, message: 'Invalid username or password' });
     }
 
-    // Use bcrypt.compare instead of direct comparison
-    const passwordMatch = await bcrypt.compare(password, user.password);
+    // Use bcryptjs.compare here
+    const passwordMatch = await bcryptjs.compare(password, user.password);
     if (!passwordMatch) {
       return res.status(401).json({ success: false, message: 'Invalid username or password' });
     }
@@ -43,14 +43,14 @@ router.post('/change-password', async (req, res) => {
       return res.status(404).json({ success: false, message: 'User not found' });
     }
     
-    // Use bcrypt.compare here
-    const passwordMatch = await bcrypt.compare(currentPassword, user.password);
+    // Use bcryptjs.compare here
+    const passwordMatch = await bcryptjs.compare(currentPassword, user.password);
     if (!passwordMatch) {
       return res.status(401).json({ success: false, message: 'Current password is incorrect' });
     }
     
     // Hash the new password
-    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    const hashedPassword = await bcryptjs.hash(newPassword, 10);
     user.password = hashedPassword;
     await user.save();
     

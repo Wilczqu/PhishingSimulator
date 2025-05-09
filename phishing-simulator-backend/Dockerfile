@@ -1,6 +1,5 @@
-FROM node:23-slim
+FROM node:23.11-slim
 
-# Create app directory and set permissions
 WORKDIR /app
 
 # Install build dependencies
@@ -14,17 +13,17 @@ RUN apt-get update && \
 
 # Create a non-root user
 RUN groupadd -r nodejs && \
-    useradd -r -g nodejs -s /bin/bash -d /home/nodejs nodejs && \
     mkdir -p /home/nodejs && \
+    useradd -r -g nodejs -s /bin/bash -d /home/nodejs nodejs && \
     chown -R nodejs:nodejs /home/nodejs /app
 
 # Copy package files first
 COPY --chown=nodejs:nodejs package*.json ./
 
 # Install dependencies
-RUN npm install --no-optional
+RUN npm install --no-optional --legacy-peer-deps
 
-# Copy rest of the application
+# Copy application files
 COPY --chown=nodejs:nodejs . .
 
 # Setup wait-for-it script
@@ -36,8 +35,5 @@ USER nodejs
 
 EXPOSE 5050
 
-# Add healthcheck
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:5050/health || exit 1
-
-CMD ["/wait-for-it.sh", "db:5432", "--", "npm", "start"]
+# Wait for DB and run migrations before starting the app
+CMD ["/wait-for-it.sh", "db:5432", "--", "sh", "-c", "npx sequelize-cli db:migrate && npm start"]

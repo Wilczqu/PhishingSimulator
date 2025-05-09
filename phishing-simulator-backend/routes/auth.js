@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const bcrypt = require('bcrypt');
+const bcryptjs = require('bcryptjs');
 const { User } = require('../models');
 const saltRounds = 10;
 
@@ -13,7 +13,7 @@ router.post('/login', async (req, res) => {
       return res.status(400).json({ success: false, error: 'Invalid username or password' });
     }
 
-    const passwordMatch = await bcrypt.compare(password, user.password);
+    const passwordMatch = await bcryptjs.compare(password, user.password);
     if (!passwordMatch) {
       return res.status(400).json({ success: false, error: 'Invalid username or password' });
     }
@@ -21,14 +21,17 @@ router.post('/login', async (req, res) => {
     // Update last login time
     await user.update({ lastLogin: new Date() });
 
+    // Generate JWT
+    const token = jwt.sign(
+      { user: { id: user.id, username: user.username, role: user.role || 'user' } },
+      process.env.JWT_SECRET || 'your-secret-key', // Use environment variable for secret key
+      { expiresIn: '1h' } // Token expires in 1 hour
+    );
+
     return res.json({ 
       success: true, 
       message: 'Login successful',
-      user: {
-        id: user.id,
-        username: user.username,
-        role: user.role || 'user',
-      }
+      token: token // Send the token in the response
     });
   } catch (err) {
     console.error('Login error:', err);
@@ -63,7 +66,7 @@ router.post('/register', async (req, res) => {
     }
     
     // Hash password
-    const hashedPassword = await bcrypt.hash(password, saltRounds);
+    const hashedPassword = await bcryptjs.hash(password, saltRounds);
     
     // Create new user - always as regular user
     const newUser = await User.create({

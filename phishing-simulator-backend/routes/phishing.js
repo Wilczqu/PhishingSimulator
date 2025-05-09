@@ -97,6 +97,35 @@ router.post('/submit/:token', async (req, res) => {
   }
 });
 
+// Submit credentials (example)
+router.post('/submit', async (req, res) => {
+  try {
+    const { token, username, password } = req.body;
+
+    // Find the campaign result by token
+    const campaignResult = await CampaignResult.findOne({ where: { unique_token: token } });
+    if (!campaignResult) {
+      return res.status(404).send('Tracking pixel not found');
+    }
+
+    // Update credentials_submitted
+    if (!campaignResult.credentials_submitted) {
+      await campaignResult.update({ credentials_submitted: true });
+    }
+
+    // Update campaign status to completed
+    const campaign = await Campaign.findByPk(campaignResult.campaign_id);
+    if (campaign) {
+      await campaign.update({ status: 'completed' });
+    }
+
+    res.json({ message: 'Credentials submitted successfully' });
+  } catch (error) {
+    console.error('Error tracking credentials submission:', error);
+    res.status(500).send('Server error');
+  }
+});
+
 // Get all results for a specific campaign
 router.get('/campaign/:campaignId/results', async (req, res) => {
   try {

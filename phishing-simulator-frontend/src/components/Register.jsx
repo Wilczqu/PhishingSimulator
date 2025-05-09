@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
 import '../App.css';
 
@@ -60,39 +60,79 @@ const Register = () => {
   };
 
   return (
-    <div className="container">
-      <h2>Register</h2>
-      {errorMsg && <p className="error-message">{errorMsg}</p>}
-      {successMsg && <p className="success-message">{successMsg}</p>}
-      <form onSubmit={handleSubmit}>
-        <div className="form-group">
-          <input
-            type="text"
-            placeholder="Username"
-            required
-            minLength="3"
-            autoComplete="username"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            disabled={isLoading}
-          />
+    <div className="login-container">
+      <div className="login-card">
+        <div className="login-header">
+          <i className="bi bi-person-plus"></i> {/* Changed icon to person-plus */}
+          <h2>Phishing Simulator</h2>
+          <p className="login-subtitle">Create your account</p>
         </div>
-        <div className="form-group">
-          <input
-            type="password"
-            placeholder="Password"
-            required
-            minLength="6"
-            autoComplete="new-password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
+        
+        {errorMsg && (
+          <div className="alert alert-danger">
+            <i className="bi bi-exclamation-triangle-fill me-2"></i>
+            {errorMsg}
+          </div>
+        )}
+        
+        {successMsg && (
+          <div className="alert alert-success">
+            <i className="bi bi-check-circle-fill me-2"></i>
+            {successMsg}
+          </div>
+        )}
+        
+        <form onSubmit={handleSubmit} className="login-form">
+          <div className="form-floating mb-3">
+            <input
+              type="text"
+              className="form-control"
+              id="username"
+              placeholder="Username"
+              required
+              minLength="3"
+              autoComplete="username"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              disabled={isLoading}
+            />
+            <label htmlFor="username">Username</label>
+          </div>
+          
+          <div className="form-floating mb-3">
+            <input
+              type="password"
+              className="form-control"
+              id="password"
+              placeholder="Password"
+              required
+              minLength="6"
+              autoComplete="new-password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              disabled={isLoading}
+            />
+            <label htmlFor="password">Password</label>
+          </div>
+          
+          <button 
+            type="submit" 
+            className="btn btn-primary w-100" 
             disabled={isLoading}
-          />
+          >
+            {isLoading ? (
+              <>
+                <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                Registering...
+              </>
+            ) : 'Register'}
+          </button>
+        </form>
+        
+        <div className="login-footer">
+          <p>Already have an account? <Link to="/login">Sign In</Link></p>
         </div>
-        <button type="submit" disabled={isLoading}>
-          {isLoading ? 'Registering...' : 'Register'}
-        </button>
-      </form>
+      </div>
     </div>
   );
 };

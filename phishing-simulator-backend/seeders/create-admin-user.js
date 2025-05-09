@@ -1,4 +1,4 @@
-const bcrypt = require('bcrypt');
+const bcryptjs = require('bcryptjs');
 const { User } = require('../models');
 
 async function seedAdminUser() {
@@ -10,7 +10,7 @@ async function seedAdminUser() {
 
     if (!existingAdmin) {
       // Create admin user with hashed password
-      const hashedPassword = await bcrypt.hash('admintud', 10);
+      const hashedPassword = await bcryptjs.hash('admintud', 10);
       
       await User.create({
         username: 'admintud',

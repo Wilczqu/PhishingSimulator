@@ -9,6 +9,7 @@ const Login = ({ onLogin }) => {
   const [password, setPassword] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [user, setUser] = useState(null); // State to store user data
   const navigate = useNavigate();
   
   // Get location to check if we came from Register with success
@@ -41,29 +42,32 @@ const Login = ({ onLogin }) => {
       console.log('Login response:', response.data);
 
       if (response.data.success) {
-        // Extract user data from response
-        const userData = {
-          id: response.data.user.id,
-          username: response.data.user.username,
-          role: response.data.user.role || 'user'
-        };
-        
-        // Call onLogin to update app state
-        onLogin(userData);
-        
-        // Redirect to home page
-        navigate('/home');
+        // Store the user data in local storage
+        localStorage.setItem('user', JSON.stringify(response.data.user));
+
+        // Set user data
+        setUser(response.data.user);
+
+        // Call the onLogin function to update the app state
+        onLogin(response.data.user);
+
+        // Redirect to the admin dashboard if the user is an admin
+        if (response.data.user.role === 'admin') {
+          navigate('/admin');
+        } else {
+          navigate('/');
+        }
       } else {
-        setErrorMsg(response.data.message || 'Login failed');
+        setErrorMsg(response.data.message || 'Login failed. Please try again.');
       }
     } catch (err) {
       console.error('Login error:', err);
-      if (err.response) {
+      if (err.response && err.response.data) {
         // Check for auth error status codes
         if (err.response.status === 401 || err.response.status === 403) {
           setErrorMsg('Invalid username or password');
         } else {
-          setErrorMsg(err.response.data?.message || 'Login failed');
+          setErrorMsg(err.response.data.message || 'Login failed');
         }
       } else {
         setErrorMsg('An error occurred during login. Please try again.');

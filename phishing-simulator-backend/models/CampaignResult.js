@@ -51,6 +51,15 @@ module.exports = (sequelize) => {
     ip_address: {
       type: DataTypes.STRING(50),
       allowNull: true
+    },
+    // Add user_id to CampaignResult
+    user_id: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      references: {
+        model: 'Users', // This should match the table name of your User model
+        key: 'id'
+      }
     }
   }, {
     // Use snake_case for column names to match original schema
