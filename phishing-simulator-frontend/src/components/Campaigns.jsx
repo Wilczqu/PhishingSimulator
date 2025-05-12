@@ -31,41 +31,69 @@ const Campaigns = ({ user }) => {
       setCampaigns(response.data);
     } catch (error) {
       console.error('Error fetching campaigns:', error);
+      setErrorMessage('Failed to load campaigns.');
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleCloseModal = () => {
+    setShowModal(false);
+    setNewCampaign({ name: '', template: '', subject: '', sender_name: '', sender_email: '' }); // Reset form
+    setErrorMessage(''); // Clear any error messages
   };
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setNewCampaign(prev => ({ ...prev, [name]: value }));
   };
-
+  
   const handleTemplateSelect = (templateId) => {
     setNewCampaign(prev => ({ ...prev, template: templateId }));
   };
 
   const handleAddCampaign = async (e) => {
     e.preventDefault();
+    setErrorMessage(''); // Clear any previous error messages
+    
     try {
       const response = await axios.post('/api/campaigns', newCampaign);
-      setNewCampaign({
-        name: '',
-        template: '',
-        subject: '',
-        sender_name: '',
-        sender_email: '',
-      });
-      setShowModal(false);
-      setSuccessMessage('Campaign created successfully!');
-      fetchCampaigns();
-      
-      // Optional: Navigate to campaign detail page for target selection
-      // const campaignId = response.data.id;
-      // navigate(`/campaign/${campaignId}/targets`);
+      if (response.status === 201) {
+        setSuccessMessage('Campaign created successfully!');
+        fetchCampaigns(); // Refresh campaigns list
+        handleCloseModal(); // Close the modal
+      } else {
+        setErrorMessage('Failed to create campaign.');
+      }
     } catch (error) {
       console.error('Error creating campaign:', error);
-      setErrorMessage(error.response?.data?.error || 'Failed to create campaign');
+      setErrorMessage('Failed to create campaign. Please check the form and try again.');
+    }
+  };
+
+  const handleLaunchCampaign = async (campaignId) => {
+    if (window.confirm('Are you sure you want to launch this campaign? This will send phishing emails to all assigned targets.')) {
+      try {
+        const response = await axios.post(`/api/campaigns/${campaignId}/launch`);
+        setSuccessMessage('Campaign launched successfully!');
+        fetchCampaigns(); // Refresh the list
+      } catch (error) {
+        console.error('Error launching campaign:', error);
+        setErrorMessage(`Failed to launch campaign: ${error.response?.data?.message || error.message}`);
+      }
+    }
+  };
+
+  const handleDeleteCampaign = async (campaignId) => {
+    if (window.confirm('Are you sure you want to delete this campaign?')) {
+      try {
+        await axios.delete(`/api/campaigns/${campaignId}`);
+        setSuccessMessage('Campaign deleted successfully!');
+        fetchCampaigns(); // Refresh the list
+      } catch (error) {
+        console.error('Error deleting campaign:', error);
+        setErrorMessage(`Failed to delete campaign: ${error.response?.data?.message || error.message}`);
+      }
     }
   };
 
@@ -74,93 +102,90 @@ const Campaigns = ({ user }) => {
       <Navbar activePage="campaigns" user={user} />
       
       <div className="container mt-4">
-        <div className="d-flex justify-content-between align-items-center mb-4">
-          <h2>Phishing Campaigns</h2>
-          <Button variant="primary" onClick={() => setShowModal(true)}>
-            <i className="bi bi-plus"></i> New Campaign
-          </Button>
-        </div>
+        <h2>Campaigns</h2>
         
         {successMessage && (
-          <Alert variant="success" onClose={() => setSuccessMessage('')} dismissible>
+          <Alert variant="success" dismissible onClose={() => setSuccessMessage('')}>
             {successMessage}
           </Alert>
         )}
         
         {errorMessage && (
-          <Alert variant="danger" onClose={() => setErrorMessage('')} dismissible>
+          <Alert variant="danger" dismissible onClose={() => setErrorMessage('')}>
             {errorMessage}
           </Alert>
         )}
         
+        <div className="d-flex justify-content-between align-items-center mb-3">
+          <h3>Campaign List</h3>
+          <Button variant="primary" onClick={() => setShowModal(true)}>
+            <i className="bi bi-plus"></i> Create Campaign
+          </Button>
+        </div>
+        
         {loading ? (
           <div className="text-center">
-            <div className="spinner-border" role="status">
+            <div className="spinner-border text-primary" role="status">
               <span className="visually-hidden">Loading...</span>
             </div>
           </div>
         ) : (
           <div className="table-responsive">
-            <table className="table table-hover">
+            <table className="table table-striped table-hover">
               <thead>
                 <tr>
                   <th>Name</th>
+                  <th>Subject</th>
                   <th>Status</th>
                   <th>Created</th>
-                  <th>Targets</th>
-                  <th>Opens</th>
-                  <th>Clicks</th>
                   <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {campaigns.length > 0 ? (
-                  campaigns.map((campaign) => (
-                    <tr key={campaign.id}>
-                      <td>
-                        <Link to={`/campaign/${campaign.id}`}>
-                          {campaign.name}
+                {campaigns.map(campaign => (
+                  <tr key={campaign.id}>
+                    <td>{campaign.name}</td>
+                    <td>{campaign.subject}</td>
+                    <td>{campaign.status}</td>
+                    <td>{new Date(campaign.createdAt).toLocaleDateString()}</td>
+                    <td>
+                      <Link to={`/campaign/${campaign.id}`} className="btn btn-sm btn-outline-info me-1">
+                        <i className="bi bi-eye"></i> Details
+                      </Link>
+                      
+                      {campaign.status === 'draft' && (
+                        <Button 
+                          variant="outline-success"
+                          size="sm"
+                          className="me-1" 
+                          onClick={() => handleLaunchCampaign(campaign.id)}
+                        >
+                          <i className="bi bi-rocket"></i> Launch
+                        </Button>
+                      )}
+                      
+                      {campaign.status === 'active' || campaign.status === 'completed' ? (
+                        <Link to={`/campaign/${campaign.id}`} className="btn btn-sm btn-outline-primary me-1">
+                          <i className="bi bi-bar-chart"></i> Report
                         </Link>
-                      </td>
-                      <td>
-                        <span className={`badge ${
-                          campaign.status === 'active' ? 'bg-success' : 
-                          campaign.status === 'scheduled' ? 'bg-info' : 
-                          campaign.status === 'completed' ? 'bg-secondary' : 'bg-warning'
-                        }`}>
-                          {campaign.status}
-                        </span>
-                      </td>
-                      <td>{new Date(campaign.createdAt).toLocaleDateString()}</td>
-                      <td>{campaign.targetCount || 0}</td>
-                      <td>{campaign.openCount || 0}</td>
-                      <td>{campaign.clickCount || 0}</td>
-                      <td>
-                        <div className="btn-group btn-group-sm">
-                          <Link to={`/campaign/${campaign.id}`} className="btn btn-outline-primary">
-                            <i className="bi bi-eye"></i>
-                          </Link>
-                          <Link to={`/campaign/${campaign.id}/targets`} className="btn btn-outline-secondary">
-                            <i className="bi bi-people"></i>
-                          </Link>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan="7" className="text-center">
-                      No campaigns yet. Create your first campaign!
+                      ) : null}
+                      
+                      <Button 
+                        variant="outline-danger"
+                        size="sm" 
+                        onClick={() => handleDeleteCampaign(campaign.id)}
+                      >
+                        <i className="bi bi-trash"></i> Delete
+                      </Button>
                     </td>
                   </tr>
-                )}
+                ))}
               </tbody>
             </table>
           </div>
         )}
       </div>
-      
-      {/* Create Campaign Modal */}
+
       <Modal show={showModal} onHide={() => setShowModal(false)}>
         <Modal.Header closeButton>
           <Modal.Title>Create New Campaign</Modal.Title>

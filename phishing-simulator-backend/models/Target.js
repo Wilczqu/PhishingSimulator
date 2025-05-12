@@ -14,6 +14,10 @@ module.exports = (sequelize) => {
     department: {
       type: DataTypes.STRING,
       allowNull: true,
+    },
+    userId: { // Add this
+      type: DataTypes.INTEGER,
+      allowNull: true,
     }
   }, {
     underscored: true,
@@ -21,9 +25,13 @@ module.exports = (sequelize) => {
   });
 
   Target.associate = (models) => {
-    Target.hasMany(models.CampaignResult, { 
+    Target.hasMany(models.CampaignResult, {
       foreignKey: 'target_id',
       as: 'results'
+    });
+    Target.belongsTo(models.User, { // Add this
+      foreignKey: 'userId',
+      as: 'user'
     });
   };
 

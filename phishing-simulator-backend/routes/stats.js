@@ -8,7 +8,7 @@ router.get('/overview', async (req, res) => {
   try {
     const [targetCount, campaignCount, sentCount, openedCount, clickedCount, submittedCount, quizCount, quizAttempts, quizPassed] = await Promise.all([
       Target.count(),
-      Campaign.count(),
+      Campaign.count(), // This gives total campaigns
       CampaignResult.count({ where: { email_sent: true } }),
       CampaignResult.count({ where: { email_opened: true } }),
       CampaignResult.count({ where: { link_clicked: true } }),
@@ -18,18 +18,19 @@ router.get('/overview', async (req, res) => {
       QuizResult.count({ where: { passed: true } })
     ]);
     
+    // Convert to numbers before sending in response
     res.json({
-      totalTargets: targetCount,
-      totalCampaigns: campaignCount,
-      emailsSent: sentCount,
-      emailsOpened: openedCount,
-      linksClicked: clickedCount,
-      credentialsSubmitted: submittedCount,
-      // Add quiz statistics to actually use QuizResult
-      totalQuizzes: quizCount,
-      quizAttempts: quizAttempts,
-      quizzesPassed: quizPassed,
-      passRate: quizAttempts > 0 ? (quizPassed / quizAttempts * 100).toFixed(1) : 0
+      totalTargets: Number(targetCount),
+      totalCampaigns: Number(campaignCount),
+      emailsSent: Number(sentCount),
+      emailsOpened: Number(openedCount),
+      linksClicked: Number(clickedCount),
+      credentialsSubmitted: Number(submittedCount),
+      // Quiz stats
+      totalQuizzes: Number(quizCount),
+      quizAttempts: Number(quizAttempts),
+      quizzesPassed: Number(quizPassed),
+      passRate: quizAttempts > 0 ? Number((quizPassed / quizAttempts * 100).toFixed(1)) : 0
     });
   } catch (error) {
     console.error('Error fetching overview stats:', error);

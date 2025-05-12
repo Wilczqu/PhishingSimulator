@@ -1,3 +1,18 @@
+/* Add these at the top of your file */
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+/* Make sure the root div takes full height */
+#root {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+}
+
 /* General styling */
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
@@ -275,16 +290,6 @@ body .login-container {
   padding: 1rem !important;
 }
 
-body .login-card {
-  width: 100% !important;
-  max-width: 450px !important;
-  background-color: white !important;
-  border-radius: 12px !important;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1) !important;
-  padding: 2.5rem !important;
-  transition: all 0.3s ease !important;
-}
-
 /* Table styles */
 .user-management-table {
   margin-top: 1rem;
@@ -308,4 +313,376 @@ body .login-card {
 
 .user-management-table tbody + tbody {
   border-top: 2px solid #dee2e6;
+}
+
+/* === CONSOLIDATED LOGIN/REGISTER/ADMINLOGIN PAGE STYLES === */
+/* Ensure this is the ONLY section defining these classes */
+
+.login-container {
+  display: flex;
+  flex-direction: column; /* Allows for content above/below card if needed */
+  justify-content: center; /* Vertically centers the card */
+  align-items: center;    /* Horizontally centers the card */
+  min-height: 100vh;      /* Makes container take at least full viewport height */
+  padding: 1rem;          /* Adds some space around the card, especially on smaller screens */
+  background-color: #f0f2f5; /* A light background for the page */
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; /* Consistent font */
+}
+
+/* Styles for the react-bootstrap Card component with your custom class .login-card */
+.login-card.card { /* Using .card for Bootstrap specificity */
+  background-color: #ffffff;
+  border: none; /* Removes default card border if using box-shadow */
+  border-radius: 0.75rem;   /* Slightly rounded corners: 12px */
+  box-shadow: 0 0.5rem 1.5rem rgba(0, 0, 0, 0.1); /* A standard shadow */
+  width: 100%;
+  max-width: 450px;     /* Max width of the card */
+  overflow: hidden; /* Ensures content respects border-radius */
+  animation: fadeIn 0.5s ease-out forwards; /* Apply fade-in animation */
+  transition: transform 0.3s ease, box-shadow 0.3s ease; /* For hover effect */
+}
+
+.login-card.card:hover {
+  transform: translateY(-5px); /* Slight lift on hover */
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.15); /* Enhanced shadow on hover */
+}
+
+/* Styles for the Card.Body within your .login-card */
+.login-card.card .card-body {
+  padding: 2rem 2.5rem; /* Generous padding: 32px top/bottom, 40px left/right */
+  text-align: center; /* Center-aligns inline or inline-block children like header/footer text */
+}
+
+.login-header {
+  margin-bottom: 1.5rem; /* Space below the header */
+  text-align: center; /* Ensure header content is centered */
+}
+
+.login-header .bi { /* Style for bootstrap icons in header */
+  font-size: 2.5rem; /* Icon size */
+  margin-bottom: 0.75rem;
+  display: block; /* Ensure margin-bottom applies correctly and icon can be centered */
+  color: #0d6efd; /* Default primary color for icons */
+}
+
+.login-header .admin-icon { /* Specific style for admin icon */
+  color: #dc3545; /* Bootstrap danger color for admin icon */
+}
+
+.login-header h2 {
+  font-size: 1.5rem;
+  margin-bottom: 0.25rem;
+  font-weight: 600; /* Make title a bit bolder */
+  color: #333; /* Darker color for title */
+}
+
+.login-subtitle {
+  color: #6c757d; /* Bootstrap's text-muted color */
+  font-size: 0.95rem;
+  margin-bottom: 1.5rem; /* Space below subtitle */
+  text-align: center;
+}
+
+/* The form itself, used as <Form className="login-form"> */
+.login-form {
+  width: 100%; /* Ensures the form takes the full width of the card-body's content area */
+  text-align: left; /* Overrides parent's text-align: center for form elements */
+  margin-bottom: 1.5rem; /* Add some space below the form before the footer */
+}
+
+/* Styling for Bootstrap's form-floating elements if you use them */
+.login-form .form-floating {
+  margin-bottom: 1.25rem; /* Space between form fields */
+}
+
+/* Styling for Bootstrap's Form.Group if you use them directly */
+.login-form .form-group {
+  margin-bottom: 1.25rem; /* Standard spacing for form groups */
+}
+
+.login-form .form-label {
+  text-align: left; /* Align labels to the left if not using floating labels */
+  display: block; /* Ensure it takes full width for text-align to work as expected */
+  margin-bottom: 0.25rem; /* Small space between label and input */
+  font-weight: 500; /* Slightly bolder labels */
+  color: #495057; /* Standard Bootstrap label color */
+}
+
+/* Ensure form controls and buttons take full width if desired */
+.login-form .form-control,
+.login-form .btn {
+  width: 100%;
+}
+
+.login-form .form-control {
+  border-radius: 0.3rem; /* Consistent border-radius for inputs */
+  border: 1px solid #ced4da; /* Standard Bootstrap border */
+}
+
+.login-form .form-control:focus {
+  border-color: #80bdff; /* Bootstrap focus color */
+  box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25); /* Bootstrap focus shadow */
+}
+
+.login-form .btn-primary { /* Specific styling for primary button in the form */
+  padding: 0.6rem 1rem; /* Button padding */
+  font-size: 1rem;
+  font-weight: 500;
+  margin-top: 0.5rem; /* Adds a little space above the button if needed */
+  border-radius: 0.3rem; /* Consistent border-radius */
+}
+
+.login-footer {
+  margin-top: 1.5rem;
+  font-size: 0.875rem; /* Slightly smaller footer text */
+  text-align: center;
+  color: #6c757d;
+  padding-top: 1rem; /* Space above footer content */
+  border-top: 1px solid #e9ecef; /* A light separator line */
+}
+
+.login-footer p {
+  margin-bottom: 0.5rem;
+}
+
+.login-footer a {
+  color: #0d6efd;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.login-footer a:hover {
+  text-decoration: underline;
+}
+
+/* Alert styling within the login card */
+.login-card.card .alert { /* Targeting .alert within .login-card.card */
+  text-align: left; /* Align text in alerts to the left */
+  margin-top: 1rem; /* Space above alert if it's not the first element */
+  margin-bottom: 1rem; /* Space below alerts */
+  font-size: 0.875rem;
+  width: 100%; /* Ensure alert takes full width within card-body padding */
+  border-radius: 0.3rem; /* Consistent border-radius */
+}
+
+/* Animation for the login card - Define only once */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* === END OF CONSOLIDATED LOGIN/REGISTER/ADMINLOGIN PAGE STYLES === */
+
+/* Add these CSS rules at the end of the file */
+
+.login-container {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  margin: 0;
+  padding: 0;
+  background-color: #f2f2f2;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+}
+
+.login-form {
+  background-color: white;
+  width: 440px;
+  padding: 44px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+}
+
+.form-control {
+  width: 100%;
+  padding: 6px 10px;
+  font-size: 15px;
+  border: 1px solid #666;
+  height: 36px;
+  outline: none;
+  margin-bottom: 24px;
+  box-sizing: border-box;
+}
+
+.form-group {
+  margin-bottom: 16px;
+}
+
+/* Login, Register, AdminLogin Page Styles */
+.login-container {
+  display: flex;
+  flex-direction: column; /* Allows for content above/below card if ever needed */
+  justify-content: center; /* Vertically centers the card */
+  align-items: center;    /* Horizontally centers the card */
+  min-height: 100vh;      /* Makes container take at least full viewport height */
+  padding: 20px;          /* Adds some space around the card, especially on smaller screens */
+  background-color: #f0f2f5; /* Optional: A light background for the page */
+}
+
+.login-card {
+  background-color: #ffffff;
+  padding: 2rem 2.5rem; /* Increased padding for better spacing */
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15); /* Slightly more pronounced shadow */
+  width: 100%;
+  max-width: 450px; /* Adjust as needed for your preferred card width */
+  text-align: center; /* Center align text in header/footer */
+}
+
+.login-header {
+  margin-bottom: 1.5rem;
+}
+
+.login-header .bi { /* Style for bootstrap icons in header */
+  font-size: 2.5rem; /* Adjust icon size */
+  margin-bottom: 0.75rem;
+  display: block; /* Ensure margin-bottom applies correctly */
+  color: #0d6efd; /* Default primary color, adjust as needed */
+}
+
+.login-header .admin-icon { /* Specific style for admin icon if needed */
+  color: #dc3545; /* Bootstrap danger color for admin */
+}
+
+.login-header h2 {
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+}
+
+.login-subtitle {
+  color: #6c757d; /* Bootstrap's text-muted color */
+  font-size: 0.95rem;
+  margin-bottom: 1.5rem;
+}
+
+.login-form .form-label {
+  text-align: left; /* Align labels to the left if not using floating labels */
+}
+
+.login-form .form-floating > .form-control:not(:placeholder-shown) ~ label {
+    /* Minor adjustment for floating labels if needed, Bootstrap usually handles this */
+}
+
+.login-footer {
+  margin-top: 1.5rem;
+  font-size: 0.9rem;
+}
+
+.login-footer p {
+  margin-bottom: 0.5rem;
+}
+
+/* Ensure buttons have consistent width if desired */
+.login-card .btn {
+  padding-top: 0.75rem;
+  padding-bottom: 0.75rem;
+  font-weight: 500;
+}
+
+/* Alert styling within the card */
+.login-card .alert {
+  text-align: left; /* Align text in alerts to the left */
+  margin-bottom: 1.5rem; /* Space below alerts */
+}
+
+/* Login Page Specific Styles */
+.login-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  background-color: #f8f9fa; /* A very light grey background for the page */
+  padding: 1rem; /* Provides some space on smaller viewports */
+}
+
+/* Styles for the react-bootstrap Card component with your custom class .login-card */
+.login-card.card {
+  width: 100%;
+  max-width: 450px; /* Controls the maximum width of the login card */
+  border: none; /* Removes default card border if using box-shadow */
+  border-radius: 0.75rem; /* Slightly softer border radius: 12px */
+  box-shadow: 0 0.5rem 1.5rem rgba(0, 0, 0, 0.1); /* A standard shadow */
+  overflow: hidden; /* Ensures content respects border-radius, good for images/headers */
+}
+
+/* Styles for the Card.Body within your .login-card */
+.login-card .card-body {
+  padding: 2rem 2.5rem; /* Generous padding: 32px top/bottom, 40px left/right */
+  text-align: center; /* Center-aligns inline or inline-block children like header/footer text */
+}
+
+.login-header {
+  margin-bottom: 1.5rem; /* Space below the header */
+}
+
+.login-header .bi-shield-lock {
+  font-size: 2.5rem; /* Icon size */
+  color: #0d6efd; /* Bootstrap primary blue */
+  margin-bottom: 0.75rem;
+  display: block; /* Ensure icon is block to be centered by text-align */
+}
+
+.login-header h2 {
+  font-size: 1.5rem; /* Slightly smaller h2 */
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+}
+
+.login-subtitle {
+  font-size: 0.95rem;
+  color: #6c757d; /* Bootstrap secondary text color */
+  margin-bottom: 1.5rem; /* Space before the form or alerts */
+}
+
+/* The form itself */
+.login-form {
+  width: 100%; /* Ensures the form takes the full width of the card-body's content area */
+  text-align: left; /* Overrides parent's text-align: center for form elements */
+}
+
+/* Styling for Bootstrap's form-floating elements */
+.login-form .form-floating {
+  margin-bottom: 1.25rem; /* Space between form fields */
+}
+
+/* Ensure form controls and buttons take full width if desired */
+.login-form .form-control,
+.login-form .btn {
+  width: 100%;
+}
+
+.login-form .btn-primary {
+  padding: 0.6rem 1rem; /* Button padding */
+  font-size: 1rem;
+  font-weight: 500;
+  margin-top: 0.5rem; /* Adds a little space above the button if needed */
+}
+
+.login-footer {
+  margin-top: 1.5rem; /* Space above the footer */
+  font-size: 0.875rem; /* Slightly smaller footer text */
+}
+
+.login-footer a {
+  color: #0d6efd;
+  text-decoration: none;
+}
+
+.login-footer a:hover {
+  text-decoration: underline;
+}
+
+/* Alert styling within the login card */
+.login-card .alert {
+  text-align: left; /* Ensure alert text is left-aligned */
+  margin-top: 1rem;
+  margin-bottom: 1rem;
+  font-size: 0.875rem;
+  /* Bootstrap alerts usually handle their own padding well */
 }

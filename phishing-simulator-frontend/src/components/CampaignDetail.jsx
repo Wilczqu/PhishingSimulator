@@ -1,353 +1,589 @@
-import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import React,  { useState, useEffect, useMemo } from 'react';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import Navbar from './Navbar';
-import { Container, Row, Col, Card, Badge, Table, Spinner, Alert, Button, Form } from 'react-bootstrap';
+import  { Container, Row, Col, Card, Badge, Table, Spinner, Alert, Button, Modal, Form } from 'react-bootstrap';
+import  { Pie, Bar } from 'react-chartjs-2';
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  ArcElement,
+  Title,
+  Tooltip,
+  Legend,
+} from 'chart.js';
+import EmailPreview from './EmailPreview';
+
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  ArcElement,
+  Title,
+  Tooltip,
+  Legend
+);
+
+// Helper function to calculate time difference in minutes
+const timeDiffInMinutes = (startTime, endTime) => {
+  if (!startTime || !endTime) return null;
+  const diff = new Date(endTime).getTime() - new Date(startTime).getTime();
+  return Math.round(diff / (1000 * 60));
+};
 
 const CampaignDetail = ({ user }) => {
   const { id } = useParams();
+  const navigate = useNavigate();
   const [campaign, setCampaign] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [sending, setSending] = useState(false);
-  const [selectedTargetId, setSelectedTargetId] = useState(''); // Add selectedTargetId state
-  const [targets, setTargets] = useState([]); // Add targets state
-  const [successMessage, setSuccessMessage] = useState(''); // Add success message state
+  const [showEmailPreview, setShowEmailPreview] = useState(false);
+  const [selectedTargetId, setSelectedTargetId] = useState(null);
+  const [success, setSuccess] = useState(null);
+  const [targets, setTargets] = useState([]);
+  const [availableTargets, setAvailableTargets] = useState([]);
+  const [selectedTargets, setSelectedTargets] = useState([]);
+  const [showAssignModal, setShowAssignModal] = useState(false);
+  const [currentTargetForPreview, setCurrentTargetForPreview] = useState(null); // target object
 
   useEffect(() => {
     const fetchCampaignDetails = async () => {
       try {
-        const response = await axios.get(`/api/campaigns/${id}`);
-        setCampaign(response.data);
+        setLoading(true);
+        setError('');
+        
+        // Get campaign details
+        const campaignRes = await axios.get(`/api/campaigns/${id}`);
+        setCampaign(campaignRes.data);
+        
+        // Get campaign targets
+        const targetsRes = await axios.get(`/api/campaigns/${id}/targets`);
+        setTargets(targetsRes.data);
+        
+        // Get available targets for assignment
+        const allTargetsRes = await axios.get('/api/targets');
+        
+        // Filter out targets already assigned to this campaign
+        const assignedTargetIds = targetsRes.data.map(t => t.id);
+        const filtered = allTargetsRes.data.filter(t => !assignedTargetIds.includes(t.id));
+        setAvailableTargets(filtered);
+        
+        // Add user info to targets
+        if (user && user.username) {
+          console.log(`Campaign being viewed by: ${user.username}`);
+        }
+        
         setLoading(false);
       } catch (err) {
         console.error('Error fetching campaign details:', err);
-        
-        // Try the simpler API as a fallback (without results included)
-        try {
-          const simpleResponse = await axios.get(`/api/campaigns/${id}/basic`);
-          setCampaign({
-            ...simpleResponse.data,
-            results: [] // Provide empty results array
-          });
-          setLoading(false);
-        } catch (fallbackErr) {
-          console.error('Fallback also failed:', fallbackErr);
-          setError('Failed to load campaign details');
-          setLoading(false);
+        setError('Failed to load campaign details. Please try again.');
+        setLoading(false);
+      }
+    };
+    
+    fetchCampaignDetails();
+  }, [id, user]);
+
+  const campaignStats = useMemo(() => {
+    if (!campaign || !campaign.results) {
+      return {
+        totalTargets: 0,
+        emailsSent: 0, // Assuming all results mean an email was intended/sent
+        emailsOpened: 0,
+        linksClicked: 0,
+        credentialsSubmitted: 0,
+        submissionRate: 0,
+        clickRate: 0,
+        conversionRate: 0,
+        detailedResults: [],
+        timeToClickData: { labels: [], data: [] },
+        departmentPerformanceData: { labels: [], data: [] },
+      };
+    }
+
+    const results = campaign.results;
+    const totalTargets = results.length;
+    const emailsSent = totalTargets; // Or a more specific count if available
+    const emailsOpened = results.filter(r => r.email_opened).length;
+    const linksClicked = results.filter(r => r.link_clicked).length;
+    const credentialsSubmitted = results.filter(r => r.credentials_submitted).length;
+
+    const submissionRate = totalTargets > 0 ? (credentialsSubmitted / totalTargets) * 100 : 0;
+    const clickRate = totalTargets > 0 ? (linksClicked / totalTargets) * 100 : 0;
+    const conversionRate = linksClicked > 0 ? (credentialsSubmitted / linksClicked) * 100 : 0;
+
+    // Time to Click Data (Histogram-like)
+    const clickTimes = results
+      .map(r => timeDiffInMinutes(campaign.sent_at || r.createdAt, r.clicked_at)) // Use campaign.sent_at or result.createdAt as baseline
+      .filter(time => time !== null && time >= 0);
+    
+    const timeToClickBins = { '0-5 min': 0, '6-15 min': 0, '16-30 min': 0, '31-60 min': 0, '>60 min': 0 };
+    clickTimes.forEach(time => {
+      if (time <= 5) timeToClickBins['0-5 min']++;
+      else if (time <= 15) timeToClickBins['6-15 min']++;
+      else if (time <= 30) timeToClickBins['16-30 min']++;
+      else if (time <= 60) timeToClickBins['31-60 min']++;
+      else timeToClickBins['>60 min']++;
+    });
+
+    // Department Performance Data
+    const departmentStats = {};
+    results.forEach(r => {
+      const dept = r.target?.department || 'Unknown';
+      if (!departmentStats[dept]) {
+        departmentStats[dept] = { total: 0, submitted: 0 };
+      }
+      departmentStats[dept].total++;
+      if (r.credentials_submitted) {
+        departmentStats[dept].submitted++;
+      }
+    });
+    const departmentPerformanceData = {
+      labels: Object.keys(departmentStats),
+      data: Object.values(departmentStats).map(dept => dept.total > 0 ? (dept.submitted / dept.total) * 100 : 0),
+      counts: Object.values(departmentStats).map(dept => `(${dept.submitted}/${dept.total})`)
+    };
+
+
+    return {
+      totalTargets,
+      emailsSent,
+      emailsOpened,
+      linksClicked,
+      credentialsSubmitted,
+      submissionRate: submissionRate.toFixed(1),
+      clickRate: clickRate.toFixed(1),
+      conversionRate: conversionRate.toFixed(1),
+      detailedResults: results,
+      timeToClickData: {
+        labels: Object.keys(timeToClickBins),
+        data: Object.values(timeToClickBins),
+      },
+      departmentPerformanceData,
+    };
+  }, [campaign]);
+
+  const submissionPieData = {
+    labels: ['Submitted', 'Did Not Submit'],
+    datasets: [{
+      data: [campaignStats.credentialsSubmitted, campaignStats.totalTargets - campaignStats.credentialsSubmitted],
+      backgroundColor: ['#dc3545', '#e9ecef'],
+      hoverBackgroundColor: ['#c82333', '#d6d8db'],
+    }],
+  };
+
+  const timeToClickChartData = {
+    labels: campaignStats.timeToClickData.labels,
+    datasets: [{
+      label: 'Number of Users',
+      data: campaignStats.timeToClickData.data,
+      backgroundColor: '#007bff',
+    }],
+  };
+  
+  const departmentChartData = {
+    labels: campaignStats.departmentPerformanceData.labels,
+    datasets: [{
+      label: 'Submission Rate (%)',
+      data: campaignStats.departmentPerformanceData.data,
+      backgroundColor: '#dc3545', // Red color for submission rate
+      borderColor: '#c82333',
+      borderWidth: 1,
+      // You can add another dataset for total counts if desired, or display counts as labels
+    }],
+  };
+   const departmentChartOptions = {
+    indexAxis: 'y', // For horizontal bar chart if many departments
+    responsive: true,
+    maintainAspectRatio: false,
+    scales: {
+      x: {
+        beginAtZero: true,
+        max: 100,
+        title: { display: true, text: 'Submission Rate (%)' }
+      },
+      y: {
+        ticks: {
+          // To show counts like (submitted/total) next to department names
+          callback: function(value, index) {
+            const label = campaignStats.departmentPerformanceData.labels[index];
+            const counts = campaignStats.departmentPerformanceData.counts[index];
+            return `${label} ${counts || ''}`;
+          }
         }
       }
-    };
-
-    const fetchTargets = async () => {
-      try {
-        const response = await axios.get('/api/targets');
-        setTargets(response.data);
-      } catch (error) {
-        console.error('Error fetching targets:', error);
-        setError('Failed to load targets');
+    },
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        callbacks: {
+          label: function(context) {
+            return `${context.dataset.label}: ${context.raw.toFixed(1)}%`;
+          }
+        }
       }
-    };
-
-    fetchCampaignDetails();
-    fetchTargets();
-  }, [id]);
-
-  const handleSendCampaign = async () => {
-    setSending(true);
-    setError('');
-    setSuccessMessage('');
-
-    try {
-      if (!selectedTargetId) {
-        throw new Error('Please select a target first');
-      }
-
-      const response = await axios.post(`/api/campaigns/${id}/send`, {
-        targetId: selectedTargetId
-      });
-      
-      if (response.data.campaign) {
-        setCampaign(response.data.campaign);
-        setSuccessMessage('Campaign sent successfully!');
-      }
-    } catch (error) {
-      console.error('Error sending campaign:', error);
-      setError(error.response?.data?.message || 'Failed to send campaign');
-    } finally {
-      setSending(false);
     }
   };
 
-  if (loading) {
+
+  const handleTargetPreview = (targetResult) => {
+    if (campaign && campaign.template_name && targetResult && targetResult.unique_token) {
+      const templateNameForUrl = campaign.template_name.toLowerCase().replace(/\s+/g, '-');
+      const previewUrl = `/phish/${templateNameForUrl}/${targetResult.unique_token}`;
+      window.open(previewUrl, '_blank', 'noopener,noreferrer');
+    } else {
+      alert('Preview not available.');
+    }
+  };
+
+  const handleLaunchCampaign = async () => {
+    if (window.confirm('Are you sure you want to launch this campaign? This will send phishing emails to all assigned targets.')) {
+      try {
+        setLoading(true);
+        const response = await axios.post(`/api/campaigns/${id}/launch`);
+        // Refresh campaign data
+        const updatedCampaign = await axios.get(`/api/campaigns/${id}`);
+        setCampaign(updatedCampaign.data);
+        setLoading(false);
+        // Show success message
+        setSuccess('Campaign launched successfully!');
+        setTimeout(() => setSuccess(null), 3000); // Changed from setSuccess('')
+      } catch (err) {
+        console.error('Error launching campaign:', err);
+        setError(err.response?.data?.message || 'Failed to launch campaign.');
+        setLoading(false);
+      }
+    }
+  };
+
+  const handlePreviewClick = (target) => { // Assuming target is the full target object
+    setSelectedTargetId(target.id); // Still needed for the API call if EmailPreview doesn't get full target
+    setCurrentTargetForPreview(target); // Store the target object
+    setShowEmailPreview(true);
+  };
+
+  const handleDeleteCampaign = async () => {
+    if (window.confirm('Are you sure you want to delete this campaign? This action cannot be undone.')) {
+      try {
+        setLoading(true);
+        await axios.delete(`/api/campaigns/${id}`);
+        navigate('/campaigns');
+      } catch (err) {
+        console.error('Error deleting campaign:', err);
+        setError('Failed to delete campaign. Please try again.');
+        setLoading(false);
+      }
+    }
+  };
+
+  const handleAssignTargets = async () => {
+    try {
+      if (selectedTargets.length === 0) {
+        setError('Please select at least one target');
+        return;
+      }
+      
+      setLoading(true);
+      await axios.post(`/api/campaigns/${id}/targets`, {
+        targetIds: selectedTargets
+      });
+      
+      // Refresh targets list
+      const targetsRes = await axios.get(`/api/campaigns/${id}/targets`);
+      setTargets(targetsRes.data);
+      
+      // Update available targets
+      const allTargetsRes = await axios.get('/api/targets');
+      const assignedTargetIds = targetsRes.data.map(t => t.id);
+      const filtered = allTargetsRes.data.filter(t => !assignedTargetIds.includes(t.id));
+      setAvailableTargets(filtered);
+      
+      setSuccess('Targets assigned successfully!');
+      setSelectedTargets([]);
+      setShowAssignModal(false);
+      setLoading(false);
+      
+      // Clear success message after 3 seconds
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (err) {
+      console.error('Error assigning targets:', err);
+      setError('Failed to assign targets. Please try again.');
+      setLoading(false);
+    }
+  };
+
+  const handleTargetSelection = (e) => {
+    const targetId = parseInt(e.target.value);
+    if (e.target.checked) {
+      setSelectedTargets([...selectedTargets, targetId]);
+    } else {
+      setSelectedTargets(selectedTargets.filter(id => id !== targetId));
+    }
+  };
+
+  if (loading && !campaign) {
     return (
-      <div>
+      <div className="container mt-4">
         <Navbar activePage="campaigns" user={user} />
-        <Container className="mt-4 text-center">
-          <Spinner animation="border" role="status">
-            <span className="visually-hidden">Loading...</span>
-          </Spinner>
-        </Container>
+        <div className="text-center my-5">
+          <Spinner animation="border" variant="primary" />
+          <p className="mt-3">Loading campaign details...</p>
+        </div>
       </div>
     );
   }
 
-  if (error) {
+  if (error && !campaign) {
     return (
-      <div>
+      <div className="container mt-4">
         <Navbar activePage="campaigns" user={user} />
-        <Container className="mt-4">
-          <Alert variant="danger">{error}</Alert>
-        </Container>
+        <Alert variant="danger">
+          {error}
+          <div className="mt-3">
+            <Button variant="outline-primary" onClick={() => navigate('/campaigns')}>
+              Back to Campaigns
+            </Button>
+          </div>
+        </Alert>
       </div>
     );
   }
 
-  if (!campaign) {
-    return (
-      <div>
-        <Navbar activePage="campaigns" user={user} />
-        <Container className="mt-4">
-          <Alert variant="warning">Campaign not found</Alert>
-        </Container>
-      </div>
-    );
-  }
-
-  // Calculate statistics based on results
-  const results = campaign.results || [];
-  const totalTargets = results.length;
-  const emailsSent = results.filter(r => r.email_sent).length;
-  const emailsOpened = results.filter(r => r.email_opened).length;
-  const linksClicked = results.filter(r => r.link_clicked).length;
-  const credentialsSubmitted = results.filter(r => r.credentials_submitted).length;
+  if (loading) return <Container className="mt-4 text-center"><Spinner animation="border" /></Container>;
+  if (error) return <Container className="mt-4"><Alert variant="danger">{error}</Alert></Container>;
+  if (!campaign) return <Container className="mt-4"><Alert variant="warning">Campaign not found.</Alert></Container>;
 
   return (
-    <div>
+    <Container className="mt-4">
       <Navbar activePage="campaigns" user={user} />
-      <Container className="mt-4">
-        <div className="d-flex justify-content-between align-items-center mb-4">
+      
+      {error && <Alert variant="danger" dismissible onClose={() => setError(null)}>{error}</Alert>}
+      {success && <Alert variant="success" dismissible onClose={() => setSuccess(null)}>{success}</Alert>}
+      
+      <Card className="shadow-sm mb-4">
+        <Card.Header className="d-flex justify-content-between align-items-center">
+          <h5 className="mb-0">Campaign Details: {campaign?.name}</h5>
           <div>
-            <h2>{campaign.name}</h2>
-            <Badge bg={
-              campaign.status === 'active' ? 'success' : 
-              campaign.status === 'scheduled' ? 'info' : 
-              campaign.status === 'completed' ? 'secondary' : 'warning'
-            }>
-              {campaign.status}
-            </Badge>
-          </div>
-          <div>
-            <Link to="/campaigns" className="btn btn-outline-secondary me-2">
-              <i className="bi bi-arrow-left"></i> Back to Campaigns
-            </Link>
-            <Link to={`/campaign/${id}/targets`} className="btn btn-primary">
-              <i className="bi bi-people"></i> Manage Targets
-            </Link>
-            {campaign.status === 'draft' && (
-              <div className="d-flex align-items-center gap-2">
-                <Form.Select
-                  value={selectedTargetId}
-                  onChange={(e) => setSelectedTargetId(e.target.value)}
-                  className="me-2"
-                  disabled={sending}
-                >
-                  <option value="">Select Target</option>
-                  {targets.map(target => (
-                    <option key={target.id} value={target.id}>
-                      {target.name} ({target.email})
-                    </option>
-                  ))}
-                </Form.Select>
-                <Button 
-                  variant="success" 
-                  onClick={handleSendCampaign} 
-                  disabled={sending || !selectedTargetId}
-                >
-                  {sending ? (
-                    <>
-                      <Spinner size="sm" className="me-2" /> 
-                      Sending...
-                    </>
-                  ) : (
-                    <>
-                      <i className="bi bi-send me-2"></i> 
-                      Send Campaign
-                    </>
-                  )}
-                </Button>
-              </div>
+            {campaign?.status === 'draft' && (
+              <Button variant="success" size="sm" className="me-2" onClick={handleLaunchCampaign} disabled={targets.length === 0}>
+                <i className="bi bi-rocket"></i> Launch Campaign
+              </Button>
             )}
+            {campaign?.status === 'active' || campaign?.status === 'completed' ? (
+              <Link to={`/campaign/${id}/report`} className="btn btn-sm btn-info me-2">
+                <i className="bi bi-bar-chart"></i> View Report
+              </Link>
+            ) : null}
+            <Button variant="danger" size="sm" onClick={handleDeleteCampaign}>
+              <i className="bi bi-trash"></i> Delete Campaign
+            </Button>
           </div>
-        </div>
-
-        {error && (
-          <Alert variant="danger" className="mt-3">
-            {error}
-          </Alert>
-        )}
-
-        {successMessage && (
-          <Alert variant="success" className="mt-3">
-            {successMessage}
-          </Alert>
-        )}
-
-        <Row className="mb-4">
-          <Col md={6}>
-            <Card>
-              <Card.Header>Campaign Details</Card.Header>
-              <Card.Body>
-                <Table borderless>
-                  <tbody>
-                    <tr>
-                      <th width="30%">Subject</th>
-                      <td>{campaign.subject}</td>
+        </Card.Header>
+        
+        <Card.Body>
+          <Row className="mb-4">
+            <Col md={6}>
+              <h6 className="fw-bold">Campaign Information</h6>
+              <Table borderless size="sm">
+                <tbody>
+                  <tr>
+                    <td className="text-muted" style={{ width: '40%' }}>Name:</td>
+                    <td>{campaign?.name}</td>
+                  </tr>
+                  <tr>
+                    <td className="text-muted">Template:</td>
+                    <td>{campaign?.template}</td>
+                  </tr>
+                  <tr>
+                    <td className="text-muted">Subject:</td>
+                    <td>{campaign?.subject}</td>
+                  </tr>
+                  <tr>
+                    <td className="text-muted">Created:</td>
+                    <td>{new Date(campaign?.createdAt).toLocaleString()}</td>
+                  </tr>
+                  <tr>
+                    <td className="text-muted">Status:</td>
+                    <td>
+                      {campaign?.status === 'draft' ? (
+                        <Badge bg="warning">Draft</Badge>
+                      ) : campaign?.status === 'active' ? (
+                        <Badge bg="success">Active</Badge>
+                      ) : (
+                        <Badge bg="secondary">Completed</Badge>
+                      )}
+                    </td>
+                  </tr>
+                </tbody>
+              </Table>
+            </Col>
+            
+            <Col md={6}>
+              <h6 className="fw-bold">Email Preview</h6>
+              <Card>
+                <Card.Body>
+                  <p><strong>Subject:</strong> {campaign?.subject}</p>
+                  <p><strong>From:</strong> Microsoft Office 365 &lt;security@microsoft-office365.com&gt;</p>
+                  <p><strong>Template:</strong> {campaign?.template}</p>
+                  <p className="text-muted">Click the "Preview Email" button next to any target to see the complete phishing email.</p>
+                </Card.Body>
+              </Card>
+            </Col>
+          </Row>
+          
+          <div className="d-flex justify-content-between align-items-center mb-3">
+            <h6 className="fw-bold mb-0">Campaign Targets</h6>
+            <Button 
+              variant="outline-primary" 
+              size="sm" 
+              onClick={() => setShowAssignModal(true)}
+              disabled={campaign?.status !== 'draft' || availableTargets.length === 0}
+            >
+              <i className="bi bi-plus-circle"></i> Assign Targets
+            </Button>
+          </div>
+          
+          {targets.length > 0 ? (
+            <div className="table-responsive">
+              <Table hover>
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Department</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {targets.map(target => (
+                    <tr key={target.id}>
+                      <td>{target.name}</td>
+                      <td>{target.email}</td>
+                      <td>{target.department || 'N/A'}</td>
+                      <td>
+                        {target.credentials_submitted ? (
+                          <Badge bg="danger">Credentials Submitted</Badge>
+                        ) : target.link_clicked ? (
+                          <Badge bg="warning">Link Clicked</Badge>
+                        ) : target.email_sent ? (
+                          <Badge bg="info">Email Sent</Badge>
+                        ) : (
+                          <Badge bg="secondary">Pending</Badge>
+                        )}
+                      </td>
+                      <td>
+                        <Button
+                          variant="outline-primary"
+                          size="sm"
+                          onClick={() => handlePreviewClick(target)}
+                        >
+                          <i className="bi bi-envelope"></i> Preview Email
+                        </Button>
+                      </td>
                     </tr>
-                    <tr>
-                      <th>Sender Name</th>
-                      <td>{campaign.sender_name}</td>
-                    </tr>
-                    <tr>
-                      <th>Sender Email</th>
-                      <td>{campaign.sender_email}</td>
-                    </tr>
-                    <tr>
-                      <th>Created</th>
-                      <td>{new Date(campaign.createdAt).toLocaleString()}</td>
-                    </tr>
-                    {campaign.scheduled_date && (
-                      <tr>
-                        <th>Scheduled For</th>
-                        <td>{new Date(campaign.scheduled_date).toLocaleString()}</td>
-                      </tr>
-                    )}
-                  </tbody>
-                </Table>
-              </Card.Body>
-            </Card>
-          </Col>
-          <Col md={6}>
-            <Card>
-              <Card.Header>Campaign Statistics</Card.Header>
-              <Card.Body>
-                <Row>
-                  <Col xs={6} className="mb-3">
-                    <div className="d-flex align-items-center">
-                      <div className="bg-primary rounded-circle p-2 me-2 text-white">
-                        <i className="bi bi-envelope"></i>
-                      </div>
-                      <div>
-                        <div className="text-muted small">Emails Sent</div>
-                        <div className="fw-bold">{emailsSent}</div>
-                      </div>
-                    </div>
-                  </Col>
-                  <Col xs={6} className="mb-3">
-                    <div className="d-flex align-items-center">
-                      <div className="bg-info rounded-circle p-2 me-2 text-white">
-                        <i className="bi bi-eye"></i>
-                      </div>
-                      <div>
-                        <div className="text-muted small">Emails Opened</div>
-                        <div className="fw-bold">{emailsOpened}</div>
-                      </div>
-                    </div>
-                  </Col>
-                  <Col xs={6}>
-                    <div className="d-flex align-items-center">
-                      <div className="bg-warning rounded-circle p-2 me-2 text-white">
-                        <i className="bi bi-cursor"></i>
-                      </div>
-                      <div>
-                        <div className="text-muted small">Links Clicked</div>
-                        <div className="fw-bold">{linksClicked}</div>
-                      </div>
-                    </div>
-                  </Col>
-                  <Col xs={6}>
-                    <div className="d-flex align-items-center">
-                      <div className="bg-danger rounded-circle p-2 me-2 text-white">
-                        <i className="bi bi-file-earmark-text"></i>
-                      </div>
-                      <div>
-                        <div className="text-muted small">Credentials Submitted</div>
-                        <div className="fw-bold">{credentialsSubmitted}</div>
-                      </div>
-                    </div>
-                  </Col>
-                </Row>
-              </Card.Body>
-            </Card>
-          </Col>
-        </Row>
-
-        <Card className="mb-4">
-          <Card.Header>Email Template</Card.Header>
-          <Card.Body>
-            <div className="email-template-preview border p-3">
-              {campaign.template ? (
-                <div dangerouslySetInnerHTML={{ __html: campaign.template }} />
-              ) : (
-                <p className="text-muted">No template content available</p>
-              )}
+                  ))}
+                </tbody>
+              </Table>
             </div>
-          </Card.Body>
-        </Card>
-
-        {results && results.length > 0 && (
-          <Card>
-            <Card.Header>Target Results</Card.Header>
-            <Card.Body>
-              <div className="table-responsive">
-                <Table striped bordered hover>
-                  <thead>
-                    <tr>
-                      <th>Target Name</th>
-                      <th>Email</th>
-                      <th>Department</th>
-                      <th>Email Sent</th>
-                      <th>Opened</th>
-                      <th>Clicked</th>
-                      <th>Submitted</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {results.map(result => (
-                      <tr key={result.id}>
-                        <td>{result.target?.name || 'Unknown'}</td>
-                        <td>{result.target?.email || 'Unknown'}</td>
-                        <td>{result.target?.department || 'Unknown'}</td>
-                        <td className="text-center">
-                          {result.email_sent ? 
-                            <i className="bi bi-check-circle-fill text-success"></i> : 
-                            <i className="bi bi-x-circle text-danger"></i>}
-                        </td>
-                        <td className="text-center">
-                          {result.email_opened ? 
-                            <i className="bi bi-check-circle-fill text-success"></i> : 
-                            <i className="bi bi-x-circle text-danger"></i>}
-                        </td>
-                        <td className="text-center">
-                          {result.link_clicked ? 
-                            <i className="bi bi-check-circle-fill text-success"></i> : 
-                            <i className="bi bi-x-circle text-danger"></i>}
-                        </td>
-                        <td className="text-center">
-                          {result.credentials_submitted ? 
-                            <i className="bi bi-check-circle-fill text-success"></i> : 
-                            <i className="bi bi-x-circle text-danger"></i>}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </Table>
-              </div>
-            </Card.Body>
-          </Card>
-        )}
-      </Container>
-    </div>
+          ) : (
+            <Alert variant="info">
+              No targets assigned to this campaign yet. 
+              {campaign?.status === 'draft' && (
+                <Button 
+                  variant="link" 
+                  className="p-0 ms-2" 
+                  onClick={() => setShowAssignModal(true)}
+                  disabled={availableTargets.length === 0}
+                >
+                  Assign targets now
+                </Button>
+              )}
+            </Alert>
+          )}
+        </Card.Body>
+      </Card>
+      
+      {/* Assign Targets Modal */}
+      <Modal show={showAssignModal} onHide={() => setShowAssignModal(false)} size="lg">
+        <Modal.Header closeButton>
+          <Modal.Title>Assign Targets to Campaign</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          {availableTargets.length === 0 ? (
+            <Alert variant="info">
+              No more targets available for assignment. <Link to="/targets">Create new targets</Link>
+            </Alert>
+          ) : (
+            <>
+              <Form>
+                <div className="mb-3">
+                  <Form.Check 
+                    type="checkbox"
+                    id="select-all"
+                    label="Select All"
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setSelectedTargets(availableTargets.map(t => t.id));
+                      } else {
+                        setSelectedTargets([]);
+                      }
+                    }}
+                    checked={selectedTargets.length === availableTargets.length && availableTargets.length > 0}
+                  />
+                </div>
+                
+                <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
+                  {availableTargets.map(target => (
+                    <div key={target.id} className="mb-2">
+                      <Form.Check 
+                        type="checkbox"
+                        id={`target-${target.id}`}
+                        label={`${target.name} (${target.email}) ${target.department ? `- ${target.department}` : ''}`}
+                        value={target.id}
+                        onChange={handleTargetSelection}
+                        checked={selectedTargets.includes(target.id)}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </Form>
+            </>
+          )}
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowAssignModal(false)}>
+            Cancel
+          </Button>
+          <Button 
+            variant="primary" 
+            onClick={handleAssignTargets} 
+            disabled={selectedTargets.length === 0 || loading}
+          >
+            {loading ? (
+              <>
+                <Spinner as="span" animation="border" size="sm" role="status" aria-hidden="true" />
+                <span className="ms-1">Assigning...</span>
+              </>
+            ) : (
+              `Assign ${selectedTargets.length} Target${selectedTargets.length !== 1 ? 's' : ''}`
+            )}
+          </Button>
+        </Modal.Footer>
+      </Modal>
+      
+      {/* Email Preview Modal */}
+      <EmailPreview 
+        campaignId={id} // campaignId
+        targetId={selectedTargetId} // targetId
+        show={showEmailPreview}
+        onHide={() => { setShowEmailPreview(false); setCurrentTargetForPreview(null); }}
+        campaignSubjectProp={campaign?.subject}
+        targetNameProp={currentTargetForPreview?.name}
+      />
+    </Container>
   );
 };
 

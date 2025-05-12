@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Modal, Button, Form } from 'react-bootstrap';
+import  { Modal, Button, Form } from 'react-bootstrap';
 import axios from 'axios';
 
 const PhishingPopup = ({ show, onHide, campaign, user }) => {

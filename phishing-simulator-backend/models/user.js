@@ -71,10 +71,10 @@ module.exports = (sequelize, DataTypes) => {
   User.associate = (models) => {
     // A User can have many CampaignResults
     User.hasMany(models.CampaignResult, {
-      foreignKey: 'userId',
+      foreignKey: 'user_id',
       as: 'campaignResults'
     });
-    
+
     // A User can have many QuizResults
     User.hasMany(models.QuizResult, {
       foreignKey: 'userId',

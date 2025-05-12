@@ -1,3 +1,4 @@
+// filepath: c:\endyearproject\PhishingSimulator\phishing-simulator-backend\migrations\20250509114030-create-targets.js
 'use strict';
 
 module.exports = {
@@ -9,16 +10,18 @@ module.exports = {
         primaryKey: true,
         type: Sequelize.INTEGER
       },
+      name: { // Changed from firstName
+        type: Sequelize.STRING,
+        allowNull: false
+      },
       email: {
         type: Sequelize.STRING,
         allowNull: false,
         unique: true
       },
-      firstName: {
-        type: Sequelize.STRING
-      },
-      lastName: {
-        type: Sequelize.STRING
+      department: { // Changed from lastName
+        type: Sequelize.STRING,
+        allowNull: true
       },
       createdAt: {
         allowNull: false,

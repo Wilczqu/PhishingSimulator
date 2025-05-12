@@ -19,6 +19,6 @@ module.exports = (sequelize) => {
       defaultValue: true
     }
   });
-  
+
   return Quiz;
 };

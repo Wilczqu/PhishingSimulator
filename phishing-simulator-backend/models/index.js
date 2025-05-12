@@ -35,7 +35,7 @@ try {
   );
 } catch (err) {
   console.error('Error loading configuration:', err);
-  
+
   // Fallback to direct environment variables if config fails
   sequelize = new Sequelize(
     process.env.DB_NAME || 'phishingdb',

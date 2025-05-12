@@ -21,7 +21,7 @@ module.exports = (sequelize) => {
   Campaign.associate = function(models) {
     Campaign.hasMany(models.CampaignResult, {
       foreignKey: 'campaign_id', // Change to snake_case
-      as: 'results'
+      as: 'results' // This alias must be used in all queries
     });
   };
 

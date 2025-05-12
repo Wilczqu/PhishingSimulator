@@ -1,3 +1,4 @@
+// filepath: c:\endyearproject\PhishingSimulator\phishing-simulator-backend\models\QuizResult.js
 'use strict';
 
 module.exports = (sequelize, DataTypes) => {
@@ -31,20 +32,20 @@ module.exports = (sequelize, DataTypes) => {
       defaultValue: DataTypes.NOW
     }
   });
-  
+
   QuizResult.associate = (models) => {
     // QuizResult belongs to a User
     QuizResult.belongsTo(models.User, {
       foreignKey: 'userId',
       as: 'user'
     });
-    
+
     // QuizResult belongs to a Quiz
     QuizResult.belongsTo(models.Quiz, {
       foreignKey: 'quizId',
       as: 'quiz'
     });
   };
-  
+
   return QuizResult;
 };

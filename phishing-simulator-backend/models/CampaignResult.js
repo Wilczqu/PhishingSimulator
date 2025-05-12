@@ -1,7 +1,27 @@
-const { DataTypes } = require('sequelize');
-
-module.exports = (sequelize) => {
-  const CampaignResult = sequelize.define('CampaignResult', {
+'use strict';
+const {
+  Model
+} = require('sequelize');
+module.exports = (sequelize, DataTypes) => {
+  class CampaignResult extends Model {
+    /**
+     * Helper method for defining associations.
+     * This method is not a part of Sequelize lifecycle.
+     * The models/index file will call this method automatically.
+     */
+    static associate(models) {
+      // define association here
+      CampaignResult.belongsTo(models.Campaign, {
+        foreignKey: 'campaign_id',
+        as: 'campaign'
+      });
+      CampaignResult.belongsTo(models.Target, {
+        foreignKey: 'target_id',
+        as: 'target'
+      });
+    }
+  }
+  CampaignResult.init({
     id: {
       type: DataTypes.INTEGER,
       primaryKey: true,
@@ -11,6 +31,18 @@ module.exports = (sequelize) => {
       type: DataTypes.STRING(100),
       allowNull: false,
       unique: true
+    },
+    campaign_id: {
+      type: DataTypes.INTEGER,
+      allowNull: false
+    },
+    target_id: {
+      type: DataTypes.INTEGER,
+      allowNull: false
+    },
+    user_id: {
+      type: DataTypes.INTEGER,
+      allowNull: true  // Change to true if this field should be optional
     },
     email_sent: {
       type: DataTypes.BOOLEAN,
@@ -51,39 +83,12 @@ module.exports = (sequelize) => {
     ip_address: {
       type: DataTypes.STRING(50),
       allowNull: true
-    },
-    // Add user_id to CampaignResult
-    user_id: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
-      references: {
-        model: 'Users', // This should match the table name of your User model
-        key: 'id'
-      }
     }
   }, {
-    // Use snake_case for column names to match original schema
+    sequelize,
+    modelName: 'CampaignResult',
     underscored: true,
     tableName: 'campaign_results'
   });
-
-  // Define associations in the model
-  CampaignResult.associate = (models) => {
-    CampaignResult.belongsTo(models.Campaign, {
-      foreignKey: 'campaign_id',
-      as: 'campaign'
-    });
-    
-    CampaignResult.belongsTo(models.Target, {
-      foreignKey: 'target_id',
-      as: 'target'
-    });
-    
-    CampaignResult.belongsTo(models.User, {
-      foreignKey: 'user_id',
-      as: 'user'
-    });
-  };
-
   return CampaignResult;
 };

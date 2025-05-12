@@ -1,145 +1,177 @@
-import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import React, { useState, useEffect, useCallback } from 'react';
+import  {useParams, Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import Navbar from './Navbar';
-import { Container, Alert, Spinner, Button, Form, Table } from 'react-bootstrap';
+import  { Container, Card, Button, Form, ListGroup, Spinner, Alert, Row, Col } from 'react-bootstrap';
+import EmailPreview from './EmailPreview';
 
 const CampaignTargets = ({ user }) => {
-  const { id } = useParams();
+  const { id: campaignId } = useParams();
+  const navigate = useNavigate();
   const [campaign, setCampaign] = useState(null);
   const [allTargets, setAllTargets] = useState([]);
-  const [selectedTargets, setSelectedTargets] = useState([]);
+  const [selectedTargetIds, setSelectedTargetIds] = useState(new Set());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [successMessage, setSuccessMessage] = useState('');
+  const [success, setSuccess] = useState('');
+  const [showEmailPreview, setShowEmailPreview] = useState(false);
+  const [selectedTargetId, setSelectedTargetId] = useState(null);
+
+  const fetchCampaignAndTargets = useCallback(async () => {
+    setLoading(true);
+    setError('');
+    setSuccess('');
+    try {
+      // Fetch campaign details to get its name and current results (which include targets)
+      const campaignResponse = await axios.get(`/api/campaigns/${campaignId}`);
+      setCampaign(campaignResponse.data);
+      
+      const currentTargetIds = new Set();
+      if (campaignResponse.data && campaignResponse.data.results) {
+        campaignResponse.data.results.forEach(result => {
+          if (result.target_id) { // Ensure target_id exists
+            currentTargetIds.add(result.target_id);
+          }
+        });
+      }
+      setSelectedTargetIds(currentTargetIds);
+
+      // Fetch all available targets
+      const allTargetsResponse = await axios.get('/api/targets');
+      setAllTargets(allTargetsResponse.data);
+
+    } catch (err) {
+      console.error('Error fetching campaign or targets:', err);
+      setError(err.response?.data?.message || 'Failed to load data. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  }, [campaignId]);
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        // Fetch campaign details
-        const campaignResponse = await axios.get(`/api/campaigns/${id}`);
-        setCampaign(campaignResponse.data);
-        
-        // Get IDs of targets already in the campaign
-        const existingTargetIds = campaignResponse.data.results?.map(
-          result => result.target?.id
-        ).filter(id => id) || [];
-        
-        // Fetch all available targets
-        const targetsResponse = await axios.get('/api/targets');
-        setAllTargets(targetsResponse.data);
-        
-        // Set initially selected targets
-        setSelectedTargets(existingTargetIds);
-        
-        setLoading(false);
-      } catch (err) {
-        console.error('Error fetching data:', err);
-        setError('Failed to load data');
-        setLoading(false);
-      }
-    };
+    fetchCampaignAndTargets();
+  }, [fetchCampaignAndTargets]);
 
-    fetchData();
-  }, [id]);
-
-  const handleTargetSelection = (targetId) => {
-    setSelectedTargets(prev => {
-      if (prev.includes(targetId)) {
-        return prev.filter(id => id !== targetId);
+  const handleTargetSelectionChange = (targetId) => {
+    setSelectedTargetIds(prevSelectedIds => {
+      const newSelectedIds = new Set(prevSelectedIds);
+      if (newSelectedIds.has(targetId)) {
+        newSelectedIds.delete(targetId);
       } else {
-        return [...prev, targetId];
+        newSelectedIds.add(targetId);
       }
+      return newSelectedIds;
     });
   };
 
-  const handleSubmit = async () => {
+  const handleSaveTargets = async () => {
+    setError('');
+    setSuccess('');
     try {
-      await axios.put(`/api/campaigns/${id}/targets`, { targetIds: selectedTargets });
-      setSuccessMessage('Campaign targets updated successfully');
+      const targetIdsArray = Array.from(selectedTargetIds);
+      await axios.put(`/api/campaigns/${campaignId}/targets`, { targetIds: targetIdsArray });
+      setSuccess('Campaign targets updated successfully!');
+      // Optionally, refresh data or navigate
+      setTimeout(() => {
+        // navigate(`/campaign/${campaignId}`); // Or refresh
+        fetchCampaignAndTargets(); // Refresh the selections
+        setSuccess('');
+      }, 2000);
     } catch (err) {
-      console.error('Error updating targets:', err);
-      setError('Failed to update targets');
+      console.error('Error updating campaign targets:', err);
+      setError(err.response?.data?.message || 'Failed to update targets. Please ensure all selected targets exist.');
     }
+  };
+
+  const handlePreviewClick = (targetId) => {
+    setSelectedTargetId(targetId);
+    setShowEmailPreview(true);
   };
 
   if (loading) {
     return (
-      <div>
+      <>
         <Navbar activePage="campaigns" user={user} />
         <Container className="mt-4 text-center">
           <Spinner animation="border" role="status">
-            <span className="visually-hidden">Loading...</span>
+            <span className="visually-hidden">Loading campaign and target data...</span>
           </Spinner>
+          <p>Loading campaign and target data...</p>
         </Container>
-      </div>
+      </>
     );
   }
 
+  if (error && !campaign) { // Show critical error if campaign data couldn't be loaded
+    return (
+      <>
+        <Navbar activePage="campaigns" user={user} />
+        <Container className="mt-4">
+          <Alert variant="danger">{error}</Alert>
+          <Link to="/campaigns" className="btn btn-secondary">Back to Campaigns</Link>
+        </Container>
+      </>
+    );
+  }
+  
   return (
-    <div>
+    <>
       <Navbar activePage="campaigns" user={user} />
       <Container className="mt-4">
-        <div className="d-flex justify-content-between align-items-center mb-4">
-          <h2>Manage Targets for {campaign?.name}</h2>
-          <Link to={`/campaign/${id}`} className="btn btn-outline-secondary">
-            <i className="bi bi-arrow-left"></i> Back to Campaign
-          </Link>
-        </div>
-
-        {error && <Alert variant="danger" dismissible onClose={() => setError('')}>{error}</Alert>}
-        {successMessage && <Alert variant="success" dismissible onClose={() => setSuccessMessage('')}>{successMessage}</Alert>}
-
-        <Form>
-          <div className="mb-3">
-            <div className="d-flex justify-content-between mb-2">
-              <h5>Select Targets</h5>
-              <div>
-                <Button size="sm" variant="outline-secondary" className="me-2" onClick={() => setSelectedTargets([])}>
-                  Deselect All
-                </Button>
-                <Button size="sm" variant="outline-primary" onClick={() => setSelectedTargets(allTargets.map(t => t.id))}>
-                  Select All
-                </Button>
-              </div>
-            </div>
-
-            <Table striped bordered hover>
-              <thead>
-                <tr>
-                  <th style={{ width: '50px' }}></th>
-                  <th>Name</th>
-                  <th>Email</th>
-                  <th>Department</th>
-                </tr>
-              </thead>
-              <tbody>
-                {allTargets.map(target => (
-                  <tr key={target.id}>
-                    <td className="text-center">
-                      <Form.Check 
-                        type="checkbox"
-                        checked={selectedTargets.includes(target.id)}
-                        onChange={() => handleTargetSelection(target.id)}
-                      />
-                    </td>
-                    <td>{target.name}</td>
-                    <td>{target.email}</td>
-                    <td>{target.department}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </Table>
-          </div>
-          
-          <div className="d-flex justify-content-end">
-            <Button variant="primary" onClick={handleSubmit}>
-              Save Changes
+        <Row className="mb-3">
+          <Col>
+            <h2>Manage Targets for: {campaign?.name || 'Campaign'}</h2>
+          </Col>
+          <Col className="text-end">
+            <Link to={`/campaign/${campaignId}`} className="btn btn-outline-secondary me-2">
+              <i className="bi bi-arrow-left"></i> Back to Campaign Details
+            </Link>
+            <Button onClick={handleSaveTargets} variant="primary">
+              <i className="bi bi-save"></i> Save Changes
             </Button>
-          </div>
-        </Form>
+          </Col>
+        </Row>
+
+        {error && <Alert variant="danger" onClose={() => setError('')} dismissible>{error}</Alert>}
+        {success && <Alert variant="success" onClose={() => setSuccess('')} dismissible>{success}</Alert>}
+
+        <Card>
+          <Card.Header>Select Targets</Card.Header>
+          <Card.Body>
+            {allTargets.length > 0 ? (
+              <ListGroup>
+                {allTargets.map(target => (
+                  <ListGroup.Item key={target.id}>
+                    <Form.Check 
+                      type="checkbox"
+                      id={`target-${target.id}`}
+                      label={`${target.name} (${target.email})`}
+                      checked={selectedTargetIds.has(target.id)}
+                      onChange={() => handleTargetSelectionChange(target.id)}
+                    />
+                    <Button 
+                      variant="outline-secondary" 
+                      size="sm"
+                      onClick={() => handlePreviewClick(target.id)}
+                    >
+                      <i className="bi bi-eye"></i> Preview Email
+                    </Button>
+                  </ListGroup.Item>
+                ))}
+              </ListGroup>
+            ) : (
+              <p>No targets available. Please <Link to="/targets">add targets</Link> first.</p>
+            )}
+          </Card.Body>
+        </Card>
       </Container>
-    </div>
+      <EmailPreview 
+        campaignId={campaignId}
+        targetId={selectedTargetId}
+        show={showEmailPreview} 
+        onHide={() => setShowEmailPreview(false)} 
+      />
+    </>
   );
 };
 

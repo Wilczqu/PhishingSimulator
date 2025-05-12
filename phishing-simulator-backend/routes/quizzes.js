@@ -52,6 +52,33 @@ router.post('/:id/submit', async (req, res) => {
   }
 });
 
+// Get all quiz results (for admin dashboard)
+router.get('/results/all', async (req, res) => {
+  try {
+    const results = await QuizResult.findAll({
+      include: [
+        { model: User, as: 'user', attributes: ['username'] },  // Added 'as: user'
+        { model: Quiz, as: 'quiz', attributes: ['title'] }      // Added 'as: quiz'
+      ],
+      order: [['createdAt', 'DESC']]
+    });
+
+    const formatted = results.map(result => ({
+      id: result.id,
+      user: result.user ? result.user.username : 'Unknown',
+      quizName: result.quiz ? result.quiz.title : 'Unknown',
+      score: result.score,
+      passed: result.passed,
+      dateTaken: result.createdAt
+    }));
+
+    res.json(formatted);
+  } catch (err) {
+    console.error('Error fetching quiz results:', err);
+    res.status(500).json({ success: false, message: 'Failed to fetch quiz results' });
+  }
+});
+
 // Get quiz statistics (for Admin)
 router.get('/stats', async (req, res) => {
   try {

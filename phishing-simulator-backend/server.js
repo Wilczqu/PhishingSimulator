@@ -2,12 +2,11 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const cors = require('cors');
 const path = require('path');
-const bcryptjs = require('bcryptjs'); // Changed to bcryptjs
+const bcryptjs = require('bcryptjs');
 require('dotenv').config();
 
-// Import the models from the index file
 const db = require('./models');
-const { User, Target, Campaign, CampaignResult } = db;
+const { User } = db; // Removed unused Target, Campaign, CampaignResult here for brevity
 
 // Import routes
 const phishingRoutes = require('./routes/phishing');
@@ -18,19 +17,20 @@ const adminRoutes = require('./routes/admin');
 const statsRoutes = require('./routes/stats');
 const quizzesRoutes = require('./routes/quizzes');
 const userRoutes = require('./routes/users');
-const authRoutes = require('./routes/auth');
+const authRoutes = require('./routes/auth'); // This should handle login and register
+const quizResultsRouter = require('./routes/quizResults');
 
-// Import seedAdminUser ONCE at the top
 const seedAdminUser = require('./seeders/create-admin-user');
 
 const app = express();
 const saltRounds = 10;
 
-// Middleware
+// Middlewares
+app.use(cors()); // Apply CORS
+app.use(express.json()); // Crucial: Parses incoming requests with JSON payloads. Place before routes.
+app.use(express.urlencoded({ extended: true })); // Parses URL-encoded data
 app.use(bodyParser.json());
 app.use(express.static(path.join(__dirname, 'public')));
-
-// Configure CORS
 app.use(
   cors({
     origin: ['http://localhost:3000', 'http://localhost:8080', 'http://frontend', 'http://backend:5050'],
@@ -39,94 +39,28 @@ app.use(
   })
 );
 
-// Health check endpoint
 app.get('/health', (req, res) => {
   res.sendStatus(200);
 });
 
 // Set up API Routes
+console.log('[DEBUG] Mounting API routes...');
+app.use('/api/auth', authRoutes); // Should contain /login and /register
 app.use('/api/phishing', phishingRoutes);
 app.use('/api/campaigns', campaignsRoutes);
 app.use('/api/targets', targetsRoutes);
-app.use('/api/admin', adminRoutes);
+app.use('/api/admin', adminRoutes); // Mount admin routes here
 app.use('/api/stats', statsRoutes);
 app.use('/api/templates', templatesRoutes);
 app.use('/api/quizzes', quizzesRoutes);
 app.use('/api/users', userRoutes);
-app.use('/api/auth', authRoutes);
+app.use('/api/quiz-results', quizResultsRouter);
 
-// Add this to server.js
-app.use('/admin', adminRoutes);
+// Remove direct /api/register and /api/login from server.js if they are in auth.js
+// The app.post('/api/register', ...) and app.post('/api/login', ...) should be removed
+// if auth.js handles /login and /register under its /api/auth base path.
 
-// Update the registration endpoint:
-
-app.post('/api/register', async (req, res) => {
-  try {
-    const { username, password } = req.body;
-    
-    // Check if username already exists
-    const existingUser = await User.findOne({ where: { username } });
-    if (existingUser) {
-      return res.status(400).json({ error: 'Username already exists' });
-    }
-    
-    // Hash password
-    const hashedPassword = await bcryptjs.hash(password, saltRounds);
-    
-    // Create new user - always as regular user regardless of what was sent
-    const newUser = await User.create({
-      username,
-      password: hashedPassword,
-      role: 'user', // Force role to be 'user'
-      active: true
-    });
-    
-    // Remove password from response
-    const userResponse = {
-      id: newUser.id,
-      username: newUser.username,
-      role: newUser.role
-    };
-    
-    res.status(201).json({
-      success: true,
-      message: 'User registered successfully',
-      user: userResponse
-    });
-  } catch (error) {
-    console.error('Registration error:', error);
-    res.status(500).json({ error: 'Registration failed' });
-  }
-});
-
-app.post('/api/login', async (req, res) => {
-  const { username, password } = req.body;
-  try {
-    const user = await User.findOne({ where: { username } });
-    if (!user) {
-      return res.status(400).json({ success: false, error: 'USER_NOT_FOUND' });
-    }
-
-    const passwordMatch = await bcryptjs.compare(password, user.password);
-    if (!passwordMatch) {
-      return res.status(400).json({ success: false, error: 'INCORRECT_PASSWORD' });
-    }
-
-    return res.json({ 
-      success: true, 
-      message: 'Login successful',
-      user: {
-        id: user.id,
-        username: user.username,
-        role: user.role || 'user',
-        // Include any other needed user fields, but NOT the password
-      }
-    });
-  } catch (err) {
-    console.error('Login error:', err);
-    return res.status(500).json({ success: false, error: 'Server error during login' });
-  }
-});
+// Remove the duplicate app.use('/admin', adminRoutes);
 
 // Database and server initialization
 async function waitForDatabase(retries = 10, delay = 5000) {
@@ -146,16 +80,12 @@ async function waitForDatabase(retries = 10, delay = 5000) {
 (async () => {
   try {
     await waitForDatabase();
-    
-    // Sync models with the database
-    await db.sequelize.sync({ alter: true }); // Use alter:true instead of force:false for safer migrations
+    await db.sequelize.sync({ alter: true });
     console.log('Database & tables created/updated!');
-    
-    // Create default admin user if it doesn't exist
+
     let adminUser = await User.findOne({ where: { username: 'admin' } });
     if (!adminUser) {
-      // Create admin with hashed password
-      const adminPassword = process.env.ADMIN_PASSWORD || 'admintud'; // Use env variable
+      const adminPassword = process.env.ADMIN_PASSWORD || 'admintud';
       const hashedPassword = await bcryptjs.hash(adminPassword, saltRounds);
       adminUser = await User.create({
         username: 'admin',
@@ -165,12 +95,9 @@ async function waitForDatabase(retries = 10, delay = 5000) {
       console.log('Default admin user created');
     }
 
-    // Seed admin user
-    await seedAdminUser(); // Await the function call
+    await seedAdminUser();
     console.log('Admin user seeding completed');
-    
-    // Add this after creating the admin user in your initialization function
-    // Create default quiz if it doesn't exist
+
     let emailQuiz = await db.Quiz.findOne({ where: { title: 'Email Quiz' } });
     if (!emailQuiz) {
       emailQuiz = await db.Quiz.create({
@@ -191,7 +118,6 @@ async function waitForDatabase(retries = 10, delay = 5000) {
             "This email appears legitimate as it is conversational and doesn't ask for sensitive information or use pressuring language.",
             "Email Phishing"
           ],
-          // Add all the other questions from your provided data
           [
             "Phishing: Hi, how's it going? It was a good meeting we had last month, here's the document that you asked for last week document1(badlink.com). Let me know if there is anything we need to change.",
             ['True', 'False'],
@@ -268,10 +194,6 @@ async function waitForDatabase(retries = 10, delay = 5000) {
       console.log('Default Email Quiz created');
     }
     
-    // Add this near the end of your server.js file, after DB sync
-
-    
-    // Start the server after successful DB connection
     const PORT = process.env.PORT || 5050;
     app.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);
@@ -281,3 +203,20 @@ async function waitForDatabase(retries = 10, delay = 5000) {
     process.exit(1);
   }
 })();
+
+// General 404 handler for non-API routes (optional)
+app.use((req, res) => {
+  if (req.path.startsWith('/api/')) {
+    res.status(404).json({ message: `API endpoint ${req.method} ${req.originalUrl} not found.` });
+  } else {
+    res.status(404).send("Sorry, can't find that!");
+  }
+});
+
+// Error handling middleware (MUST BE LAST `app.use`)
+app.use((err, req, res, next) => {
+  console.error("Global error handler:", err.stack);
+  res.status(500).send('Something broke!');
+});
+
+module.exports = app;

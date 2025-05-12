@@ -1,166 +1,147 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
-import { Bar } from 'react-chartjs-2';
 import Navbar from './Navbar';
 import 'chart.js/auto';
+import { Container, Row, Col, Card, Form, Button, Table } from 'react-bootstrap'; // ADDED: Table import
 
 const Reports = ({ user }) => {
   const [campaigns, setCampaigns] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [overallStats, setOverallStats] = useState({
-    totalTargets: 0,
-    emailsSent: 0,
-    emailsOpened: 0,
-    linksClicked: 0,
-    credentialsSubmitted: 0
-  });
-  
+  const [startDate, setStartDate] = useState(null);
+  const [endDate, setEndDate] = useState(null);
+  const [campaignStatus, setCampaignStatus] = useState('all');
+
   useEffect(() => {
     if (user && user.id) {
-      Promise.all([
-        fetchCampaigns(),
-        fetchOverallStats()
-      ]);
+      fetchData();
     }
-  }, [user]);
-  
-  const fetchCampaigns = async () => {
+  }, [user, startDate, endDate, campaignStatus]);
+
+  const fetchData = async () => {
+    setLoading(true);
     try {
-      // Get campaigns specific to user role
-      const endpoint = user.role === 'admin' 
-        ? '/api/campaigns' 
-        : `/api/campaigns/user/${user.id}`;
-        
-      const response = await axios.get(endpoint);
-      
-      // Only include active or completed campaigns
-      const filteredCampaigns = response.data.filter(
-        c => c.status === 'active' || c.status === 'completed'
-      );
-      setCampaigns(filteredCampaigns);
+      const campaignsData = await fetchCampaigns();
+      setCampaigns(campaignsData);
     } catch (error) {
-      console.error('Error fetching campaigns:', error);
+      console.error('Error fetching data:', error);
     } finally {
       setLoading(false);
     }
   };
-  
-  const fetchOverallStats = async () => {
+
+  const fetchCampaigns = async () => {
     try {
-      // Get stats specific to user role
-      const endpoint = user.role === 'admin' 
-        ? '/api/stats/overall' 
-        : `/api/stats/user/${user.id}`;
-        
-      const response = await axios.get(endpoint);
-      setOverallStats(response.data);
+      let endpoint = user.role === 'admin' ? '/api/campaigns' : `/api/campaigns/user/${user.id}`;
+      const params = {};
+      if (startDate) params.startDate = startDate.toISOString();
+      if (endDate) params.endDate = endDate.toISOString();
+      if (campaignStatus !== 'all') params.status = campaignStatus;
+
+      const response = await axios.get(endpoint, { params });
+      return response.data;
     } catch (error) {
-      console.error('Error fetching overall stats:', error);
+      console.error('Error fetching campaigns:', error);
+      return [];
     }
   };
-  
+
   const formatDate = (dateString) => {
     if (!dateString) return '';
     const date = new Date(dateString);
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   };
-  
-  // Calculate overall percentages safely to avoid NaN
-  const openRate = overallStats.emailsSent > 0 ? 
-    (overallStats.emailsOpened / overallStats.emailsSent * 100).toFixed(1) : 0;
-    
-  const clickRate = overallStats.emailsOpened > 0 ? 
-    (overallStats.linksClicked / overallStats.emailsOpened * 100).toFixed(1) : 0;
-    
-  const submissionRate = overallStats.linksClicked > 0 ? 
-    (overallStats.credentialsSubmitted / overallStats.linksClicked * 100).toFixed(1) : 0;
 
-  // Use Number() to convert string percentages to numbers for chart data
-  const chartData = {
-    labels: ['Email Open Rate', 'Link Click Rate', 'Submission Rate'],
-    datasets: [
-      {
-        label: 'Percentage (%)',
-        data: [Number(openRate), Number(clickRate), Number(submissionRate)],
-        backgroundColor: [
-          'rgba(255, 206, 86, 0.8)',
-          'rgba(54, 162, 235, 0.8)',
-          'rgba(255, 99, 132, 0.8)',
-        ],
-        borderColor: [
-          'rgba(255, 206, 86, 1)',
-          'rgba(54, 162, 235, 1)',
-          'rgba(255, 99, 132, 1)',
-        ],
-        borderWidth: 1,
-      },
-    ],
+  const handleExportCSV = () => {
+    // Implement CSV export logic here
+    console.log('Exporting to CSV...');
   };
-  
+
+  const handleExportPDF = () => {
+    // Implement PDF export logic here
+    console.log('Exporting to PDF...');
+  };
+
   return (
     <div>
       <Navbar activePage="reports" user={user} />
-      
-      <div className="container mt-4">
-        <div className="row">
-          <div className="col-12">
-            <div className="card shadow-sm mb-4">
-              <div className="card-header">
-                <h5 className="mb-0">Overall Phishing Campaign Results</h5>
-              </div>
-              <div className="card-body">
-                {loading ? (
-                  <div className="text-center">
-                    <div className="spinner-border text-primary" role="status">
-                      <span className="visually-hidden">Loading...</span>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="row">
-                    <div className="col-md-8">
-                      <Bar 
-                        data={chartData} 
-                        options={{ 
-                          responsive: true,
-                          scales: {
-                            y: {
-                              beginAtZero: true,
-                              max: 100,
-                              title: {
-                                display: true,
-                                text: 'Percentage (%)'
-                              }
-                            }
-                          }
-                        }} 
+
+      <Container className="mt-4">
+        <Row>
+          <Col md={12}>
+            <Card className="shadow-sm mb-4">
+              <Card.Header>
+                <h5 className="mb-0">Report Filters</h5>
+              </Card.Header>
+              <Card.Body>
+                <Row className="mb-3">
+                  <Col md={4}>
+                    <Form.Group controlId="startDate">
+                      <Form.Label>Start Date</Form.Label>
+                      <Form.Control
+                        type="date"
+                        value={startDate ? startDate.toISOString().split('T')[0] : ''}
+                        onChange={e => setStartDate(e.target.value ? new Date(e.target.value) : null)}
                       />
-                    </div>
-                    <div className="col-md-4">
-                      <div className="stats-summary">
-                        <h5 className="mb-3">Summary</h5>
-                        <p><strong>Total Campaigns:</strong> {campaigns.length}</p>
-                        <p><strong>Total Targets:</strong> {overallStats.totalTargets}</p>
-                        <p><strong>Emails Sent:</strong> {overallStats.emailsSent}</p>
-                        <p><strong>Open Rate:</strong> {openRate}%</p>
-                        <p><strong>Click Rate:</strong> {clickRate}%</p>
-                        <p><strong>Submission Rate:</strong> {submissionRate}%</p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-        
-        <div className="row">
-          <div className="col-12">
-            <div className="card shadow-sm mb-4">
-              <div className="card-header">
-                <h5 className="mb-0">Campaign Reports</h5>
-              </div>
-              <div className="card-body">
+                    </Form.Group>
+                  </Col>
+                  <Col md={4}>
+                    <Form.Group controlId="endDate">
+                      <Form.Label>End Date</Form.Label>
+                      <Form.Control
+                        type="date"
+                        value={endDate ? endDate.toISOString().split('T')[0] : ''}
+                        onChange={e => setEndDate(e.target.value ? new Date(e.target.value) : null)}
+                      />
+                    </Form.Group>
+                  </Col>
+                  <Col md={4}>
+                    <Form.Group controlId="campaignStatus">
+                      <Form.Label>Campaign Status</Form.Label>
+                      <Form.Control
+                        as="select"
+                        value={campaignStatus}
+                        onChange={e => setCampaignStatus(e.target.value)}
+                      >
+                        <option value="all">All</option>
+                        <option value="active">Active</option>
+                        <option value="completed">Completed</option>
+                        <option value="draft">Draft</option>
+                      </Form.Control>
+                    </Form.Group>
+                  </Col>
+                </Row>
+                <Row>
+                  <Col md={12} className="text-end">
+                    <Button variant="outline-secondary" onClick={fetchData}>
+                      Apply Filters
+                    </Button>
+                  </Col>
+                </Row>
+              </Card.Body>
+            </Card>
+          </Col>
+        </Row>
+
+        <Row>
+          <Col md={12}>
+            <Card className="shadow-sm mb-4">
+              <Card.Header>
+                <Row>
+                  <Col>
+                    <h5 className="mb-0">Campaign Reports</h5>
+                  </Col>
+                  <Col className="text-end">
+                    <Button variant="outline-success" size="sm" onClick={handleExportCSV}>
+                      Export to CSV
+                    </Button>
+                    <Button variant="outline-danger" size="sm" onClick={handleExportPDF}>
+                      Export to PDF
+                    </Button>
+                  </Col>
+                </Row>
+              </Card.Header>
+              <Card.Body>
                 {loading ? (
                   <div className="text-center">
                     <div className="spinner-border text-primary" role="status">
@@ -169,7 +150,7 @@ const Reports = ({ user }) => {
                   </div>
                 ) : campaigns.length > 0 ? (
                   <div className="table-responsive">
-                    <table className="table table-hover">
+                    <Table className="table table-hover">
                       <thead>
                         <tr>
                           <th>Campaign Name</th>
@@ -186,7 +167,7 @@ const Reports = ({ user }) => {
                           <tr key={campaign.id}>
                             <td>{campaign.name}</td>
                             <td>
-                              <span className={`badge ${campaign.status === 'completed' ? 
+                              <span className={`badge ${campaign.status === 'completed' ?
                                 'bg-secondary' : 'bg-success'}`}>
                                 {campaign.status.charAt(0).toUpperCase() + campaign.status.slice(1)}
                               </span>
@@ -196,8 +177,8 @@ const Reports = ({ user }) => {
                             <td>{campaign.click_rate || 0}%</td>
                             <td>{campaign.submission_rate || 0}%</td>
                             <td>
-                              <Link 
-                                to={`/report/${campaign.id}`} 
+                              <Link
+                                to={`/report/${campaign.id}`}
                                 className="btn btn-sm btn-outline-primary"
                               >
                                 View Details
@@ -206,16 +187,16 @@ const Reports = ({ user }) => {
                           </tr>
                         ))}
                       </tbody>
-                    </table>
+                    </Table>
                   </div>
                 ) : (
                   <p className="text-muted">No active or completed campaigns to report on.</p>
                 )}
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+              </Card.Body>
+            </Card>
+          </Col>
+        </Row>
+      </Container>
     </div>
   );
 };

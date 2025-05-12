@@ -36,4 +36,4 @@ USER nodejs
 EXPOSE 5050
 
 # Wait for DB and run migrations before starting the app
-CMD ["/wait-for-it.sh", "db:5432", "--", "sh", "-c", "npx sequelize-cli db:migrate && npm start"]
+CMD ["/wait-for-it.sh", "db:5432", "--", "sh", "-c", "npx sequelize db:migrate && npm start"]

@@ -1,99 +1,85 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import  { Navbar as BootstrapNavbar, Nav, Container } from 'react-bootstrap'; // BootstrapNavbar.Text will be available
+import axios from 'axios';
 
-const Navbar = ({ activePage, user }) => {
-  // Check if user has admin role
+const Navbar = ({ activePage, user, onLogout }) => {
+  const navigate = useNavigate();
   const isAdmin = user && user.role === 'admin';
-  
+
+  const handleLogout = async () => {
+    try {
+      // First clear local data
+      localStorage.removeItem('user');
+      
+      // Call onLogout function from parent to clear app state
+      if (typeof onLogout === 'function') {
+        onLogout();
+      }
+
+      // Make API request to logout endpoint
+      await axios.post('/api/auth/logout');
+      
+      // Explicitly navigate to login
+      // Consider using navigate('/login', { replace: true }) from react-router-dom for SPA navigation
+      // if you are not intending a full page reload.
+      // However, window.location.href will also work.
+      window.location.href = '/#/login'; 
+    } catch (error) {
+      console.error('Logout failed:', error);
+      // Even if API fails, still redirect to login
+      window.location.href = '/#/login';
+    }
+  };
+
   return (
-    <nav className="navbar navbar-expand-lg navbar-dark bg-primary">
-      <div className="container">
-        <Link className="navbar-brand" to={user ? "/home" : "/login"}>Phishing Simulator</Link>
-        <button className="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-          <span className="navbar-toggler-icon"></span>
-        </button>
-        <div className="collapse navbar-collapse" id="navbarNav">
-          <ul className="navbar-nav">
-            {/* Only show these links if user is logged in */}
+    <BootstrapNavbar bg="dark" variant="dark" expand="lg">
+      <Container>
+        <BootstrapNavbar.Brand as={Link} to="/">Phishing Simulator</BootstrapNavbar.Brand>
+        <BootstrapNavbar.Toggle aria-controls="basic-navbar-nav" />
+        <BootstrapNavbar.Collapse id="basic-navbar-nav">
+          <Nav className="me-auto">
+            <Nav.Link as={Link} to={user ? "/home" : "/"} active={activePage === 'home'}>Home</Nav.Link>
             {user && (
               <>
-                <li className="nav-item">
-                  <Link className={`nav-link ${activePage === 'quizzes' ? 'active' : ''}`} to="/quizzes">Quizzes</Link>
-                </li>
-                <li className="nav-item">
-                  <Link className={`nav-link ${activePage === 'results' ? 'active' : ''}`} to="/results">My Results</Link>
-                </li>
+                <Nav.Link as={Link} to="/quizzes" active={activePage === 'quizzes'}>Quizzes</Nav.Link>
+                {isAdmin && (
+                  <>
+                    <Nav.Link as={Link} to="/admin" active={activePage === 'admin'}>Admin Dashboard</Nav.Link>
+                    <Nav.Link as={Link} to="/campaigns" active={activePage === 'campaigns'}>Campaigns</Nav.Link>
+                    <Nav.Link as={Link} to="/targets" active={activePage === 'targets'}>Targets</Nav.Link>
+                    <Nav.Link as={Link} to="/reports" active={activePage === 'reports'}>Reports</Nav.Link>
+                  </>
+                )}
               </>
             )}
-            
-            {/* Links visible only to admin users */}
-            {isAdmin && (
+          </Nav>
+          <Nav>
+            {user ? (
               <>
-                <li className="nav-item">
-                  <Link className={`nav-link ${activePage === 'targets' ? 'active' : ''}`} to="/targets">Targets</Link>
-                </li>
-                <li className="nav-item">
-                  <Link className={`nav-link ${activePage === 'campaigns' ? 'active' : ''}`} to="/campaigns">Campaigns</Link>
-                </li>
-                <li className="nav-item">
-                  <Link className={`nav-link ${activePage === 'reports' ? 'active' : ''}`} to="/reports">Reports</Link>
-                </li>
-                <li className="nav-item dropdown">
-                  <a className="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
-                    Admin
-                  </a>
-                  <ul className="dropdown-menu">
-                    <li>
-                      <Link className="dropdown-item" to="/admin">Dashboard</Link>
-                    </li>
-                    <li>
-                      <Link className="dropdown-item" to="/users/manage">User Management</Link>
-                    </li>
-                  </ul>
-                </li>
+                {/* Show Admin Login link only for standard users (not admins) */}
+                {user && !isAdmin && (
+                  <Nav.Link as={Link} to="/admin/login" className="text-warning">
+                    <i className="bi bi-shield-lock me-1"></i>Admin Login
+                  </Nav.Link>
+                )}
+                {/* Corrected to use BootstrapNavbar.Text */}
+                <BootstrapNavbar.Text className="me-3"> 
+                  <i className="bi bi-person-circle me-1"></i>
+                  {user?.username || 'Guest'}
+                </BootstrapNavbar.Text>
+                <Nav.Link onClick={handleLogout}>Logout</Nav.Link>
               </>
-            )}
-            
-            {/* Links visible only to regular users */}
-            {!isAdmin && user && (
-              <li className="nav-item">
-                <Link className={`nav-link ${activePage === 'surprise' ? 'active' : ''}`} to="/surprise">Surprise</Link>
-              </li>
-            )}
-          </ul>
-          <ul className="navbar-nav ms-auto">
-            {/* Admin login link - always visible */}
-            <li className="nav-item">
-              <Link 
-                className={`nav-link ${activePage === 'adminLogin' ? 'active' : ''}`} 
-                to="/admin/login"
-              >
-                <i className="bi bi-shield-lock me-1"></i>
-                Admin Login
-              </Link>
-            </li>
-            
-            {/* User info and logout - only if logged in */}
-            {user && (
+            ) : (
               <>
-                <li className="nav-item">
-                  <span className="nav-link">
-                    <i className="bi bi-person-circle me-1"></i>
-                    {user.username} ({user.role})
-                  </span>
-                </li>
-                <li className="nav-item">
-                  <Link className="nav-link" to="/logout">
-                    <i className="bi bi-box-arrow-right me-1"></i>
-                    Logout
-                  </Link>
-                </li>
+                <Nav.Link as={Link} to="/login" active={activePage === 'login'}>Login</Nav.Link>
+                <Nav.Link as={Link} to="/register" active={activePage === 'register'}>Register</Nav.Link>
               </>
             )}
-          </ul>
-        </div>
-      </div>
-    </nav>
+          </Nav>
+        </BootstrapNavbar.Collapse>
+      </Container>
+    </BootstrapNavbar>
   );
 };
 

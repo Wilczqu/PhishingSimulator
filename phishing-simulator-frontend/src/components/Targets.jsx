@@ -54,23 +54,19 @@ const Targets = ({ user }) => {
       const response = await axios.post('/api/targets', {
         name: newTarget.name.trim(),
         email: newTarget.email.trim().toLowerCase(),
-        department: newTarget.department?.trim() || null
+        department: newTarget.department?.trim() || null,
+        userId: newTarget.userId || null // Include userId in the request
       });
 
       setNewTarget({ name: '', email: '', department: '', userId: '' });
-      setShowModal(false);
       setSuccessMessage('Target added successfully!');
-      fetchTargets(); // Refresh the targets list
-      
-      setTimeout(() => {
-        setSuccessMessage('');
-      }, 3000);
+      fetchTargets(); // Refresh the list
+      setShowModal(false); // Close the modal
     } catch (error) {
       console.error('Error adding target:', error);
-      const errorMessage = error.response?.data?.error || 
-                          error.message || 
-                          'Failed to add target';
-      alert(errorMessage);
+      setSuccessMessage(`Failed to add target: ${error.message}`);
+    } finally {
+      setLoading(false);
     }
   };
   
@@ -92,7 +88,7 @@ const Targets = ({ user }) => {
   };
   
   const formatDate = (dateString) => {
-    if (!dateString) return '';
+    if (!dateString) return 'N/A';
     const date = new Date(dateString);
     return date.toISOString().split('T')[0];
   };
@@ -159,7 +155,7 @@ const Targets = ({ user }) => {
                                   navigate(`/edit-target/${target.id}`);
                                 }}
                               >
-                                Edit
+                                <i className="bi bi-pencil"></i> Edit
                               </button>
                               <button 
                                 className="btn btn-sm btn-outline-danger ms-2"
@@ -174,81 +170,77 @@ const Targets = ({ user }) => {
                     </table>
                   </div>
                 ) : (
-                  <p className="text-muted">No targets added yet. Add your first target using the button above.</p>
+                  <div className="alert alert-info">
+                    No targets found. Add some targets to get started!
+                  </div>
                 )}
               </div>
             </div>
           </div>
         </div>
-      </div>
-      
-      {/* Add Target Modal */}
-      <Modal show={showModal} onHide={() => setShowModal(false)}>
-        <Modal.Header closeButton>
-          <Modal.Title>Add New Target</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          <Form onSubmit={handleAddTarget}>
-            <div className="mb-3">
-              <label htmlFor="name" className="form-label">Full Name</label>
-              <input 
-                type="text" 
-                className="form-control" 
-                id="name" 
-                name="name"
-                value={newTarget.name}
-                onChange={handleInputChange}
-                required 
-              />
-            </div>
-            <div className="mb-3">
-              <label htmlFor="email" className="form-label">Email Address</label>
-              <input 
-                type="email" 
-                className="form-control" 
-                id="email" 
-                name="email"
-                value={newTarget.email}
-                onChange={handleInputChange}
-                required 
-              />
-            </div>
-            <div className="mb-3">
-              <label htmlFor="department" className="form-label">Department</label>
-              <input 
-                type="text" 
-                className="form-control" 
-                id="department" 
-                name="department"
-                value={newTarget.department}
-                onChange={handleInputChange}
-              />
-            </div>
-            <Form.Group className="mb-3">
-              <Form.Label>Assign User</Form.Label>
-              <Form.Control
-                as="select"
-                name="userId"
-                value={newTarget.userId}
-                onChange={handleInputChange}
-              >
-                <option value="">Select User</option>
-                {users.map(user => (
-                  <option key={user.id} value={user.id}>{user.username}</option>
-                ))}
-              </Form.Control>
-            </Form.Group>
-            <div className="text-end">
-              <Button variant="secondary" onClick={() => setShowModal(false)}>
-                Cancel
-              </Button>
-              <Button variant="primary" type="submit" className="ms-2">
+        
+        <Modal show={showModal} onHide={() => setShowModal(false)}>
+          <Modal.Header closeButton>
+            <Modal.Title>Add New Target</Modal.Title>
+          </Modal.Header>
+          <Modal.Body>
+            <Form onSubmit={handleAddTarget}>
+              <div className="mb-3">
+                <label htmlFor="name" className="form-label">Full Name</label>
+                <input 
+                  type="text" 
+                  className="form-control" 
+                  id="name" 
+                  name="name"
+                  value={newTarget.name}
+                  onChange={handleInputChange}
+                  required 
+                />
+              </div>
+              <div className="mb-3">
+                <label htmlFor="email" className="form-label">Email Address</label>
+                <input 
+                  type="email" 
+                  className="form-control" 
+                  id="email" 
+                  name="email"
+                  value={newTarget.email}
+                  onChange={handleInputChange}
+                  required 
+                />
+              </div>
+              <div className="mb-3">
+                <label htmlFor="department" className="form-label">Department</label>
+                <input 
+                  type="text" 
+                  className="form-control" 
+                  id="department" 
+                  name="department"
+                  value={newTarget.department}
+                  onChange={handleInputChange}
+                />
+              </div>
+              <Form.Group className="mb-3">
+                <Form.Label>Assign User</Form.Label>
+                <Form.Control
+                  as="select"
+                  name="userId"
+                  value={newTarget.userId}
+                  onChange={handleInputChange}
+                >
+                  <option value="">Select User</option>
+                  {users.map(user => (
+                    <option key={user.id} value={user.id}>{user.username}</option>
+                  ))}
+                </Form.Control>
+              </Form.Group>
+              <Button variant="primary" type="submit">
                 Add Target
               </Button>
-            </div>
-          </Form>
-        </Modal.Body>
-      </Modal>
+            </Form>
+          </Modal.Body>
+        </Modal>
+      </div>
     </div>
   );
 };

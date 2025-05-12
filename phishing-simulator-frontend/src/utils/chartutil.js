@@ -1,36 +1,23 @@
 /**
  * Generates chart configuration for campaign statistics
  * @param {Object} stats - Campaign statistics data
- * @param {string} userId - Optional user ID to filter statistics
  * @returns {Object} Chart configuration
  */
-export const generateCampaignChartData = (stats, userId = null) => {
-  // Filter statistics by user ID if provided
-  const filteredStats = userId
-    ? {
-        emailsSent: stats?.emailsSent?.filter(item => item.userId === userId).length || 0,
-        emailsOpened: stats?.emailsOpened?.filter(item => item.userId === userId).length || 0,
-        linksClicked: stats?.linksClicked?.filter(item => item.userId === userId).length || 0,
-        credentialsSubmitted: stats?.credentialsSubmitted?.filter(item => item.userId === userId).length || 0,
-      }
-    : {
-        emailsSent: stats?.emailsSent?.length || 0,
-        emailsOpened: stats?.emailsOpened?.length || 0,
-        linksClicked: stats?.linksClicked?.length || 0,
-        credentialsSubmitted: stats?.credentialsSubmitted?.length || 0,
-      };
+export const generateCampaignChartData = (stats) => {
+  // Ensure all values are processed as numbers
+  const emailsSent = Number(stats.emailsSent || 0);
+  const emailsOpened = Number(stats.emailsOpened || 0);
+  const linksClicked = Number(stats.linksClicked || 0); 
+  const credentialsSubmitted = Number(stats.credentialsSubmitted || 0);
+
+  console.log('Campaign Chart Data Values:', { emailsSent, emailsOpened, linksClicked, credentialsSubmitted });
 
   return {
     labels: ['Sent', 'Opened', 'Clicked', 'Credentials'],
     datasets: [
       {
         label: 'Campaign Statistics',
-        data: [
-          filteredStats.emailsSent,
-          filteredStats.emailsOpened,
-          filteredStats.linksClicked,
-          filteredStats.credentialsSubmitted
-        ],
+        data: [emailsSent, emailsOpened, linksClicked, credentialsSubmitted],
         backgroundColor: [
           'rgba(54, 162, 235, 0.6)',
           'rgba(75, 192, 192, 0.6)',
@@ -55,12 +42,18 @@ export const generateCampaignChartData = (stats, userId = null) => {
  * @returns {Object} Chart configuration
  */
 export const generateQuizChartData = (quizStats) => {
+  // Convert all values to numbers to ensure correct chart rendering
+  const passCount = Number(quizStats.passCount || 0);
+  const failCount = Number(quizStats.failCount || 0);
+  
+  console.log('Quiz Chart Data Values:', { passCount, failCount });
+  
   return {
     labels: ['Passed', 'Failed'],
     datasets: [
       {
         label: 'Quiz Results',
-        data: [quizStats.passCount, quizStats.failCount],
+        data: [passCount, failCount],
         backgroundColor: [
           'rgba(75, 192, 192, 0.6)',
           'rgba(255, 99, 132, 0.6)'

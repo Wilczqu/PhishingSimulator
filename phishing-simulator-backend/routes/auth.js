@@ -21,17 +21,14 @@ router.post('/login', async (req, res) => {
     // Update last login time
     await user.update({ lastLogin: new Date() });
 
-    // Generate JWT
-    const token = jwt.sign(
-      { user: { id: user.id, username: user.username, role: user.role || 'user' } },
-      process.env.JWT_SECRET || 'your-secret-key', // Use environment variable for secret key
-      { expiresIn: '1h' } // Token expires in 1 hour
-    );
-
-    return res.json({ 
-      success: true, 
+    return res.json({
+      success: true,
       message: 'Login successful',
-      token: token // Send the token in the response
+      user: {
+        id: user.id,
+        username: user.username,
+        role: user.role || 'user'
+      }
     });
   } catch (err) {
     console.error('Login error:', err);
@@ -43,31 +40,31 @@ router.post('/login', async (req, res) => {
 router.post('/register', async (req, res) => {
   try {
     const { username, password } = req.body;
-    
+
     // Validate inputs
     if (!username || !password) {
       return res.status(400).json({ success: false, error: 'Username and password are required' });
     }
-    
+
     if (username.length < 3 || password.length < 6) {
-      return res.status(400).json({ 
-        success: false, 
+      return res.status(400).json({
+        success: false,
         error: 'Username must be at least 3 characters and password at least 6 characters'
       });
     }
-    
+
     // Check if username already exists with a clear message
     const existingUser = await User.findOne({ where: { username } });
     if (existingUser) {
-      return res.status(400).json({ 
-        success: false, 
-        error: 'This username is already taken' 
+      return res.status(400).json({
+        success: false,
+        error: 'This username is already taken'
       });
     }
-    
+
     // Hash password
     const hashedPassword = await bcryptjs.hash(password, saltRounds);
-    
+
     // Create new user - always as regular user
     const newUser = await User.create({
       username,
@@ -75,14 +72,14 @@ router.post('/register', async (req, res) => {
       role: 'user', // Force role to be 'user'
       active: true
     });
-    
+
     // Remove password from response
     const userResponse = {
       id: newUser.id,
       username: newUser.username,
       role: newUser.role
     };
-    
+
     res.status(201).json({
       success: true,
       message: 'User registered successfully',
@@ -90,11 +87,27 @@ router.post('/register', async (req, res) => {
     });
   } catch (error) {
     console.error('Registration error:', error);
-    res.status(500).json({ 
-      success: false, 
-      error: 'Registration failed. Please try again later.' 
+    res.status(500).json({
+      success: false,
+      error: 'Registration failed. Please try again later.'
     });
   }
 });
 
+// Make sure this route exists in your auth.js file
+router.post('/logout', (req, res) => {
+  // If using sessions
+  if (req.session) {
+    req.session.destroy(err => {
+      if (err) {
+        return res.status(500).json({ message: 'Failed to logout' });
+      }
+      res.clearCookie('connect.sid'); // Clear the session cookie
+      return res.json({ message: 'Logged out successfully' });
+    });
+  } else {
+    // If not using sessions or already logged out
+    res.json({ message: 'Already logged out' });
+  }
+});
 module.exports = router;
